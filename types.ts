@@ -8,6 +8,7 @@ export interface Question {
 }
 
 export enum QuizState {
+  LANDING = 'LANDING',
   START = 'START',
   PLAYING = 'PLAYING',
   FINISHED = 'FINISHED'

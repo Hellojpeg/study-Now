@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import StartView from './components/StartView';
 import QuizView from './components/QuizView';
 import ResultView from './components/ResultView';
+import LandingView from './components/LandingView';
 import { QuizState, SubjectId } from './types';
 import { QUIZZES } from './constants';
 import { BookOpen } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeSubject, setActiveSubject] = useState<SubjectId>('world-history');
-  const [gameState, setGameState] = useState<QuizState>(QuizState.START);
+  const [gameState, setGameState] = useState<QuizState>(QuizState.LANDING);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [missedQuestions, setMissedQuestions] = useState<number[]>([]);
@@ -20,6 +21,15 @@ const App: React.FC = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [gameState, currentQuestionIndex, activeSubject]);
+
+  const handleLandingSelect = (subject: SubjectId) => {
+    setActiveSubject(subject);
+    setGameState(QuizState.START);
+    // Reset states just in case
+    setScore(0);
+    setMissedQuestions([]);
+    setEnergy(0);
+  };
 
   const handleSubjectChange = (subject: SubjectId) => {
     if (activeSubject !== subject) {
@@ -63,6 +73,13 @@ const App: React.FC = () => {
     setEnergy(0);
   };
 
+  const handleHomeClick = () => {
+    setGameState(QuizState.LANDING);
+    setScore(0);
+    setMissedQuestions([]);
+    setEnergy(0);
+  };
+
   const getTabStyle = (id: SubjectId) => {
     const isActive = activeSubject === id;
     return `px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
@@ -79,34 +96,39 @@ const App: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 py-3">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 {/* Logo & Title */}
-                <div className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                <button 
+                  onClick={handleHomeClick}
+                  className="font-bold text-lg text-slate-800 flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
                     <span className="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm shadow-sm">
                         <BookOpen className="w-5 h-5" />
                     </span>
-                    <span>Midterm Prep</span>
-                </div>
+                    <span>Mr. Gomez's Class</span>
+                </button>
 
-                {/* Subject Tabs */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-full overflow-x-auto max-w-full">
-                    <button 
-                        onClick={() => handleSubjectChange('world-history')} 
-                        className={getTabStyle('world-history')}
-                    >
-                        World History
-                    </button>
-                    <button 
-                        onClick={() => handleSubjectChange('civics')} 
-                        className={getTabStyle('civics')}
-                    >
-                        Civics
-                    </button>
-                    <button 
-                        onClick={() => handleSubjectChange('us-history')} 
-                        className={getTabStyle('us-history')}
-                    >
-                        US History
-                    </button>
-                </div>
+                {/* Subject Tabs - Only show if NOT on Landing Page */}
+                {gameState !== QuizState.LANDING && (
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-full overflow-x-auto max-w-full animate-fadeIn">
+                      <button 
+                          onClick={() => handleSubjectChange('world-history')} 
+                          className={getTabStyle('world-history')}
+                      >
+                          World History
+                      </button>
+                      <button 
+                          onClick={() => handleSubjectChange('civics')} 
+                          className={getTabStyle('civics')}
+                      >
+                          Civics
+                      </button>
+                      <button 
+                          onClick={() => handleSubjectChange('us-history')} 
+                          className={getTabStyle('us-history')}
+                      >
+                          US History
+                      </button>
+                  </div>
+                )}
 
                 {/* Score Display (only when playing) */}
                 <div className="hidden sm:block min-w-[80px] text-right">
@@ -122,6 +144,10 @@ const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="py-8 px-4">
+        {gameState === QuizState.LANDING && (
+          <LandingView onSelectSubject={handleLandingSelect} />
+        )}
+
         {gameState === QuizState.START && (
           <StartView 
             subjectId={currentQuiz.id}
@@ -158,7 +184,7 @@ const App: React.FC = () => {
 
        {/* Simple footer */}
        <footer className="text-center py-6 text-slate-400 text-sm">
-        Midterm Prep Assistant &copy; {new Date().getFullYear()}
+        Mr. Gomez's Class &copy; {new Date().getFullYear()}
       </footer>
     </div>
   );
