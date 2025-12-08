@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { Question } from '../types';
 import { ArrowRight, CheckCircle, XCircle, AlertCircle, Lightbulb, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { playSuccessSound, playFailureSound } from '../utils/audio';
 
 interface QuizViewProps {
   question: Question;
@@ -24,6 +26,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [triggerRainbow, setTriggerRainbow] = useState(false);
+  const [triggerRedFlash, setTriggerRedFlash] = useState(false);
 
   const handleOptionClick = (index: number) => {
     if (isAnswered) return;
@@ -35,6 +38,9 @@ const QuizView: React.FC<QuizViewProps> = ({
     onAnswer(isCorrect); // Immediate feedback for energy bar
 
     if (isCorrect) {
+      // Play Sound
+      playSuccessSound();
+
       // Trigger confetti
       confetti({
         particleCount: 150,
@@ -46,6 +52,30 @@ const QuizView: React.FC<QuizViewProps> = ({
       // Trigger rainbow flash
       setTriggerRainbow(true);
       setTimeout(() => setTriggerRainbow(false), 800);
+    } else {
+      // Play Sound
+      playFailureSound();
+
+      // Trigger Explosion
+      const explosionColors = ['#ef4444', '#dc2626', '#b91c1c', '#7f1d1d', '#000000'];
+      
+      confetti({
+        particleCount: 100,
+        spread: 360,
+        startVelocity: 30,
+        origin: { y: 0.5 },
+        colors: explosionColors,
+        shapes: ['circle', 'square'],
+        scalar: 1.2,
+        drift: 0,
+        ticks: 60,
+        gravity: 1.5,
+        decay: 0.90
+      });
+
+      // Trigger Red Flash
+      setTriggerRedFlash(true);
+      setTimeout(() => setTriggerRedFlash(false), 500);
     }
   };
 
@@ -57,6 +87,7 @@ const QuizView: React.FC<QuizViewProps> = ({
     setIsAnswered(false);
     setShowHint(false);
     setTriggerRainbow(false);
+    setTriggerRedFlash(false);
   };
 
   const getOptionStyles = (index: number) => {
@@ -95,6 +126,11 @@ const QuizView: React.FC<QuizViewProps> = ({
       {/* Rainbow Flash Overlay */}
       {triggerRainbow && (
         <div className="fixed inset-0 pointer-events-none z-[100] animate-rainbow-flash opacity-40 mix-blend-overlay" />
+      )}
+
+      {/* Red Flash Overlay */}
+      {triggerRedFlash && (
+        <div className="fixed inset-0 pointer-events-none z-[100] animate-red-flash" />
       )}
 
       {/* Energy Bar */}
