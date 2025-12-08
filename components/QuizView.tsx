@@ -1,7 +1,6 @@
-
-import React, { useState } from 'react';
-import { Question } from '../types';
-import { ArrowRight, CheckCircle, XCircle, AlertCircle, Lightbulb, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Question, GameMode } from '../types';
+import { ArrowRight, CheckCircle, XCircle, AlertCircle, Lightbulb, Zap, Clock, Flame, Square, Triangle, Circle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { playSuccessSound, playFailureSound } from '../utils/audio';
 
@@ -10,6 +9,8 @@ interface QuizViewProps {
   currentNumber: number;
   totalQuestions: number;
   energy: number;
+  gameMode: GameMode;
+  combo: number;
   onAnswer: (isCorrect: boolean) => void;
   onNext: () => void;
 }
@@ -19,6 +20,8 @@ const QuizView: React.FC<QuizViewProps> = ({
   currentNumber,
   totalQuestions,
   energy,
+  gameMode,
+  combo,
   onAnswer,
   onNext,
 }) => {
@@ -26,7 +29,35 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [triggerRainbow, setTriggerRainbow] = useState(false);
+  const [triggerGreenFlash, setTriggerGreenFlash] = useState(false);
   const [triggerRedFlash, setTriggerRedFlash] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(10); // Speed mode timer
+
+  // Reset timer on new question
+  useEffect(() => {
+    if (gameMode === 'speed') {
+      setTimeLeft(10);
+      setIsAnswered(false);
+      setSelectedOption(null);
+    }
+  }, [question, gameMode]);
+
+  // Timer Logic
+  useEffect(() => {
+    if (gameMode !== 'speed' || isAnswered) return;
+
+    if (timeLeft <= 0) {
+      // Time run out treated as wrong answer
+      handleOptionClick(-1); // -1 indicates no option selected (time out)
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, isAnswered, gameMode]);
 
   const handleOptionClick = (index: number) => {
     if (isAnswered) return;
@@ -41,17 +72,31 @@ const QuizView: React.FC<QuizViewProps> = ({
       // Play Sound
       playSuccessSound();
 
-      // Trigger confetti
+      // Trigger standard confetti
       confetti({
-        particleCount: 150,
+        particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
         colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
       });
 
-      // Trigger rainbow flash
-      setTriggerRainbow(true);
-      setTimeout(() => setTriggerRainbow(false), 800);
+      // Special Effects based on Mode and Combo
+      if (gameMode === 'speed') {
+         setTriggerGreenFlash(true);
+         setTimeout(() => setTriggerGreenFlash(false), 400);
+      } else {
+         setTriggerRainbow(true);
+         setTimeout(() => setTriggerRainbow(false), 800);
+      }
+
+      // Combo Effects
+      if (combo >= 2) { 
+         // Extra visuals if "speed" mode.
+         if (gameMode === 'speed' && combo + 1 >= 3) {
+            confetti({ particleCount: 50, spread: 120, origin: { y: 0.3 } });
+         }
+      }
+
     } else {
       // Play Sound
       playFailureSound();
@@ -60,9 +105,9 @@ const QuizView: React.FC<QuizViewProps> = ({
       const explosionColors = ['#ef4444', '#dc2626', '#b91c1c', '#7f1d1d', '#000000'];
       
       confetti({
-        particleCount: 100,
+        particleCount: 150,
         spread: 360,
-        startVelocity: 30,
+        startVelocity: 45,
         origin: { y: 0.5 },
         colors: explosionColors,
         shapes: ['circle', 'square'],
@@ -80,7 +125,6 @@ const QuizView: React.FC<QuizViewProps> = ({
   };
 
   const handleNextClick = () => {
-    if (selectedOption === null) return;
     onNext();
     // Reset local state for next question
     setSelectedOption(null);
@@ -88,6 +132,7 @@ const QuizView: React.FC<QuizViewProps> = ({
     setShowHint(false);
     setTriggerRainbow(false);
     setTriggerRedFlash(false);
+    setTriggerGreenFlash(false);
   };
 
   const getOptionStyles = (index: number) => {
@@ -121,142 +166,221 @@ const QuizView: React.FC<QuizViewProps> = ({
     return 'bg-red-500';
   };
 
-  return (
-    <div className="w-full max-w-2xl mx-auto px-4 pb-12 relative">
-      {/* Rainbow Flash Overlay */}
-      {triggerRainbow && (
-        <div className="fixed inset-0 pointer-events-none z-[100] animate-rainbow-flash opacity-40 mix-blend-overlay" />
-      )}
+  // Determine wrapper classes for shake effect
+  const wrapperClass = (gameMode === 'speed' && isAnswered && selectedOption === question.correctAnswerIndex) 
+    ? "w-full max-w-2xl mx-auto px-4 pb-12 relative z-10 animate-shake" 
+    : "w-full max-w-2xl mx-auto px-4 pb-12 relative z-10";
 
-      {/* Red Flash Overlay */}
-      {triggerRedFlash && (
-        <div className="fixed inset-0 pointer-events-none z-[100] animate-red-flash" />
-      )}
-
-      {/* Energy Bar */}
-      <div className="mb-6 bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
-        <Zap className={`w-6 h-6 ${energy > 0 ? 'text-yellow-500 fill-yellow-500' : 'text-slate-300'}`} />
-        <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-          <div 
-            className={`h-full ${getEnergyColor()} transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,255,0,0.5)]`}
-            style={{ width: `${energy}%` }}
-          />
-        </div>
-        <span className="text-sm font-bold text-slate-600 w-12 text-right">{energy}%</span>
-      </div>
-
-      {/* Progress Header */}
-      <div className="mb-8">
-        <div className="flex justify-between items-end mb-2">
-          <span className="text-sm font-bold text-slate-400 tracking-wider uppercase">
-            {question.unit}
-          </span>
-          <span className="text-sm font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-            {currentNumber} / {totalQuestions}
-          </span>
-        </div>
-        <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-500 transition-all duration-500 ease-out"
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Question Card */}
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mb-6 relative">
-        <div className="p-8">
-          <div className="flex justify-between items-start mb-6">
-             <h2 className="text-2xl font-bold text-slate-800 leading-snug flex-1 mr-4">
-                {question.question}
-            </h2>
-             {!isAnswered && (
-                <button 
-                  onClick={() => setShowHint(!showHint)}
-                  className="p-2 rounded-full hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 transition-colors"
-                  title="Show Hint"
-                >
-                    <Lightbulb className={`w-6 h-6 ${showHint ? 'text-yellow-500 fill-yellow-500' : ''}`} />
-                </button>
-             )}
-          </div>
-
-          {/* Hint Box */}
-          <div className={`
-            overflow-hidden transition-all duration-300 ease-in-out
-            ${showHint ? 'max-h-32 mb-6 opacity-100' : 'max-h-0 mb-0 opacity-0'}
-          `}>
-             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 flex gap-3">
-                <Lightbulb className="w-5 h-5 flex-shrink-0" />
-                <p><strong>Hint:</strong> {question.hint || "Think carefully about the keywords in the question."}</p>
-             </div>
-          </div>
-
-          <div className="space-y-3">
-            {question.options.map((option, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleOptionClick(idx)}
-                disabled={isAnswered}
-                className={getOptionStyles(idx)}
-              >
-                <div className="flex items-center gap-4">
-                  <span
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border ${
-                      isAnswered
-                        ? idx === question.correctAnswerIndex
-                          ? "bg-emerald-200 border-emerald-300 text-emerald-700"
-                          : idx === selectedOption
-                          ? "bg-red-200 border-red-300 text-red-700"
-                          : "bg-slate-100 border-slate-200 text-slate-400"
-                        : "bg-white border-slate-300 text-slate-500 group-hover:border-blue-400 group-hover:text-blue-600"
-                    }`}
-                  >
-                    {String.fromCharCode(65 + idx)}
-                  </span>
-                  <span className="flex-1">{option}</span>
-                </div>
-                
-                {isAnswered && idx === question.correctAnswerIndex && (
-                  <CheckCircle className="w-6 h-6 text-emerald-500 flex-shrink-0" />
-                )}
-                {isAnswered && idx === selectedOption && idx !== question.correctAnswerIndex && (
-                  <XCircle className="w-6 h-6 text-red-500 flex-shrink-0" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Feedback Footer */}
-        <div className={`
-          border-t transition-all duration-300 overflow-hidden
-          ${isAnswered ? 'max-h-32 p-4 bg-slate-50' : 'max-h-0'}
-        `}>
-          <div className="flex items-center justify-between">
-             <div className="flex items-center gap-2">
-                {selectedOption === question.correctAnswerIndex ? (
-                    <span className="text-emerald-700 font-bold flex items-center gap-2 animate-bounce">
-                        Correct! Great job.
-                    </span>
-                ) : (
-                    <span className="text-red-700 font-bold flex items-center gap-2">
-                        <AlertCircle className="w-5 h-5"/>
-                        Correct Answer: {String.fromCharCode(65 + question.correctAnswerIndex)}
-                    </span>
-                )}
-             </div>
-
-             <button
-              onClick={handleNextClick}
-              className="px-6 py-2 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2"
-             >
-               {currentNumber === totalQuestions ? "Finish" : "Next"} <ArrowRight className="w-4 h-4" />
-             </button>
-          </div>
-        </div>
-      </div>
+  // Dynamic Background for Speed Mode
+  const SpeedModeBackground = () => (
+    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+       {/* Animated Gradient */}
+       <div className="absolute inset-0 animate-speed-bg opacity-90"></div>
+       
+       {/* Floating Shapes */}
+       <div className="absolute left-[10%] animate-float" style={{ animationDuration: '8s', animationDelay: '0s' }}>
+          <Square className="w-16 h-16 text-white opacity-20 rotate-12" />
+       </div>
+       <div className="absolute left-[30%] animate-float" style={{ animationDuration: '12s', animationDelay: '1s' }}>
+          <Circle className="w-10 h-10 text-yellow-300 opacity-20" />
+       </div>
+       <div className="absolute left-[60%] animate-float" style={{ animationDuration: '7s', animationDelay: '2s' }}>
+          <Triangle className="w-20 h-20 text-blue-200 opacity-20 rotate-45" />
+       </div>
+       <div className="absolute left-[85%] animate-float" style={{ animationDuration: '10s', animationDelay: '0.5s' }}>
+          <Zap className="w-12 h-12 text-purple-300 opacity-20" />
+       </div>
+       
+       {/* Dark overlay pattern to maintain readability */}
+       <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]"></div>
     </div>
+  );
+
+  return (
+    <>
+      {gameMode === 'speed' && <SpeedModeBackground />}
+    
+      <div className={wrapperClass}>
+        {/* Rainbow Flash Overlay */}
+        {triggerRainbow && (
+          <div className="fixed inset-0 pointer-events-none z-[100] animate-rainbow-flash opacity-40 mix-blend-overlay" />
+        )}
+
+        {/* Red Flash Overlay */}
+        {triggerRedFlash && (
+          <div className="fixed inset-0 pointer-events-none z-[100] animate-red-flash" />
+        )}
+        
+        {/* Green Flash Overlay (Speed Mode) */}
+        {triggerGreenFlash && (
+          <div className="fixed inset-0 pointer-events-none z-[100] animate-green-flash" />
+        )}
+
+        {/* Combo Effects Overlays */}
+        {combo >= 3 && gameMode === 'speed' && (
+          <div className="fixed inset-0 pointer-events-none z-[50] animate-lightning opacity-30 mix-blend-screen" />
+        )}
+        {combo >= 7 && gameMode === 'speed' && (
+          <div className="fixed inset-0 pointer-events-none z-[40] animate-blue-fire border-[20px] border-blue-500/20 rounded-none" />
+        )}
+
+        {/* Top HUD: Energy & Combo */}
+        <div className="flex gap-4 mb-6 relative z-20">
+          {/* Energy Bar */}
+          <div className="flex-1 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+              <Zap className={`w-6 h-6 ${energy > 0 ? 'text-yellow-500 fill-yellow-500' : 'text-slate-300'}`} />
+              <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div 
+                  className={`h-full ${getEnergyColor()} transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,255,0,0.5)]`}
+                  style={{ width: `${energy}%` }}
+              />
+              </div>
+              <span className="text-sm font-bold text-slate-600 w-12 text-right">{energy}%</span>
+          </div>
+
+          {/* Combo Counter (Speed Mode) */}
+          {gameMode === 'speed' && (
+             <div className={`p-3 rounded-2xl shadow-sm border flex items-center gap-2 font-bold px-4 transition-all ${combo > 2 ? 'bg-orange-50 border-orange-200 text-orange-600 scale-105 shadow-orange-100' : 'bg-white border-slate-100 text-slate-400'}`}>
+                <Flame className={`w-5 h-5 ${combo > 4 ? 'animate-pulse fill-orange-500' : ''}`} />
+                x{combo}
+             </div>
+          )}
+        </div>
+
+        {/* Speed Timer */}
+        {gameMode === 'speed' && !isAnswered && (
+            <div className="flex justify-center mb-6 relative z-20">
+                <div className={`
+                  flex items-center gap-2 px-8 py-3 rounded-full font-mono text-2xl font-black shadow-lg transition-colors border-4
+                  ${timeLeft <= 3 
+                    ? 'bg-red-500 border-red-400 text-white animate-pulse' 
+                    : 'bg-black/80 border-white/20 text-white animate-neon-pulse'}
+                `}>
+                    <Clock className="w-6 h-6" />
+                    00:{timeLeft.toString().padStart(2, '0')}
+                </div>
+            </div>
+        )}
+
+        {/* Progress Header */}
+        <div className="mb-4 relative z-20">
+          <div className="flex justify-between items-end mb-2">
+            <span className={`text-sm font-bold tracking-wider uppercase ${gameMode === 'speed' ? 'text-white/80' : 'text-slate-400'}`}>
+              {question.unit}
+            </span>
+            <span className="text-sm font-semibold text-slate-600 bg-white/80 backdrop-blur px-3 py-1 rounded-full shadow-sm">
+              {currentNumber} / {totalQuestions}
+            </span>
+          </div>
+          <div className="h-2 w-full bg-slate-200/50 rounded-full overflow-hidden backdrop-blur-sm">
+            <div
+              className={`h-full transition-all duration-500 ease-out ${gameMode === 'speed' ? 'bg-white shadow-[0_0_10px_#fff]' : 'bg-blue-500'}`}
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Question Card */}
+        <div className={`
+          rounded-3xl shadow-xl overflow-hidden mb-6 relative z-20 transition-all duration-300
+          ${gameMode === 'speed' 
+             ? 'bg-white/95 backdrop-blur-xl border-4 border-white/40 shadow-2xl shadow-purple-500/20' 
+             : 'bg-white border border-slate-100'}
+          ${combo >= 7 && gameMode === 'speed' ? 'shadow-blue-500/50 border-blue-400' : ''}
+        `}>
+          <div className="p-8">
+            <div className="flex justify-between items-start mb-6">
+               <h2 className="text-2xl font-bold text-slate-800 leading-snug flex-1 mr-4">
+                  {question.question}
+              </h2>
+               {!isAnswered && gameMode !== 'speed' && (
+                  <button 
+                    onClick={() => setShowHint(!showHint)}
+                    className="p-2 rounded-full hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 transition-colors"
+                    title="Show Hint"
+                  >
+                      <Lightbulb className={`w-6 h-6 ${showHint ? 'text-yellow-500 fill-yellow-500' : ''}`} />
+                  </button>
+               )}
+            </div>
+
+            {/* Hint Box */}
+            <div className={`
+              overflow-hidden transition-all duration-300 ease-in-out
+              ${showHint ? 'max-h-32 mb-6 opacity-100' : 'max-h-0 mb-0 opacity-0'}
+            `}>
+               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 flex gap-3">
+                  <Lightbulb className="w-5 h-5 flex-shrink-0" />
+                  <p><strong>Hint:</strong> {question.hint || "Think carefully about the keywords in the question."}</p>
+               </div>
+            </div>
+
+            <div className="space-y-3">
+              {question.options.map((option, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleOptionClick(idx)}
+                  disabled={isAnswered}
+                  className={getOptionStyles(idx)}
+                >
+                  <div className="flex items-center gap-4">
+                    <span
+                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border ${
+                        isAnswered
+                          ? idx === question.correctAnswerIndex
+                            ? "bg-emerald-200 border-emerald-300 text-emerald-700"
+                            : idx === selectedOption
+                            ? "bg-red-200 border-red-300 text-red-700"
+                            : "bg-slate-100 border-slate-200 text-slate-400"
+                          : "bg-white border-slate-300 text-slate-500 group-hover:border-blue-400 group-hover:text-blue-600"
+                      }`}
+                    >
+                      {String.fromCharCode(65 + idx)}
+                    </span>
+                    <span className="flex-1">{option}</span>
+                  </div>
+                  
+                  {isAnswered && idx === question.correctAnswerIndex && (
+                    <CheckCircle className="w-6 h-6 text-emerald-500 flex-shrink-0" />
+                  )}
+                  {isAnswered && idx === selectedOption && idx !== question.correctAnswerIndex && (
+                    <XCircle className="w-6 h-6 text-red-500 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Feedback Footer */}
+          <div className={`
+            border-t transition-all duration-300 overflow-hidden
+            ${isAnswered ? 'max-h-32 p-4 bg-slate-50' : 'max-h-0'}
+          `}>
+            <div className="flex items-center justify-between">
+               <div className="flex items-center gap-2">
+                  {selectedOption === question.correctAnswerIndex ? (
+                      <span className="text-emerald-700 font-bold flex items-center gap-2 animate-bounce">
+                          Correct! Great job.
+                      </span>
+                  ) : (
+                      <span className="text-red-700 font-bold flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5"/>
+                          Correct: {String.fromCharCode(65 + question.correctAnswerIndex)}
+                      </span>
+                  )}
+               </div>
+
+               <button
+                onClick={handleNextClick}
+                className="px-6 py-2 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2 shadow-lg"
+               >
+                 {currentNumber === totalQuestions ? "Finish" : "Next"} <ArrowRight className="w-4 h-4" />
+               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
 
