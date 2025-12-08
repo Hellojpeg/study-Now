@@ -10,6 +10,19 @@
       body {
         font-family: 'Inter', sans-serif;
       }
+      @keyframes rainbow {
+        0% { background-color: rgba(255, 0, 0, 0.3); }
+        14% { background-color: rgba(255, 127, 0, 0.3); }
+        28% { background-color: rgba(255, 255, 0, 0.3); }
+        42% { background-color: rgba(0, 255, 0, 0.3); }
+        57% { background-color: rgba(0, 0, 255, 0.3); }
+        71% { background-color: rgba(75, 0, 130, 0.3); }
+        85% { background-color: rgba(148, 0, 211, 0.3); }
+        100% { background-color: rgba(255, 0, 0, 0.3); }
+      }
+      .animate-rainbow-flash {
+        animation: rainbow 0.8s linear infinite;
+      }
     </style>
   <script type="importmap">
 {
@@ -17,7 +30,8 @@
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0"
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "canvas-confetti": "https://aistudiocdn.com/canvas-confetti@^1.9.2"
   }
 }
 </script>

@@ -4,6 +4,7 @@ export interface Question {
   question: string;
   options: string[];
   correctAnswerIndex: number;
+  hint?: string;
 }
 
 export enum QuizState {

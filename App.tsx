@@ -12,6 +12,7 @@ const App: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [missedQuestions, setMissedQuestions] = useState<number[]>([]);
+  const [energy, setEnergy] = useState(0); // Start at 0% energy
 
   const currentQuiz = QUIZZES[activeSubject];
 
@@ -27,6 +28,7 @@ const App: React.FC = () => {
         setCurrentQuestionIndex(0);
         setScore(0);
         setMissedQuestions([]);
+        setEnergy(0);
     }
   };
 
@@ -35,17 +37,20 @@ const App: React.FC = () => {
     setCurrentQuestionIndex(0);
     setScore(0);
     setMissedQuestions([]);
+    setEnergy(0); // Reset energy on start
   };
 
-  const handleNextQuestion = (wasCorrect: boolean) => {
-    // Update score
-    if (wasCorrect) {
+  const handleAnswer = (isCorrect: boolean) => {
+    if (isCorrect) {
       setScore(prev => prev + 1);
+      setEnergy(prev => Math.min(100, prev + 10)); // Increase energy, max 100
     } else {
       setMissedQuestions(prev => [...prev, currentQuiz.questions[currentQuestionIndex].id]);
+      setEnergy(prev => Math.max(0, prev - 10)); // Decrease energy, min 0
     }
+  };
 
-    // Move to next or finish
+  const handleNextQuestion = () => {
     if (currentQuestionIndex < currentQuiz.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
@@ -55,6 +60,7 @@ const App: React.FC = () => {
 
   const handleRestart = () => {
     setGameState(QuizState.START);
+    setEnergy(0);
   };
 
   const getTabStyle = (id: SubjectId) => {
@@ -131,6 +137,8 @@ const App: React.FC = () => {
             question={currentQuiz.questions[currentQuestionIndex]}
             currentNumber={currentQuestionIndex + 1}
             totalQuestions={currentQuiz.questions.length}
+            energy={energy}
+            onAnswer={handleAnswer}
             onNext={handleNextQuestion}
           />
         )}

@@ -1,35 +1,62 @@
 import React, { useState } from 'react';
 import { Question } from '../types';
-import { ArrowRight, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle, XCircle, AlertCircle, Lightbulb, Zap } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 interface QuizViewProps {
   question: Question;
   currentNumber: number;
   totalQuestions: number;
-  onNext: (wasCorrect: boolean) => void;
+  energy: number;
+  onAnswer: (isCorrect: boolean) => void;
+  onNext: () => void;
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
   question,
   currentNumber,
   totalQuestions,
+  energy,
+  onAnswer,
   onNext,
 }) => {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [triggerRainbow, setTriggerRainbow] = useState(false);
 
   const handleOptionClick = (index: number) => {
     if (isAnswered) return;
+    
     setSelectedOption(index);
     setIsAnswered(true);
+
+    const isCorrect = index === question.correctAnswerIndex;
+    onAnswer(isCorrect); // Immediate feedback for energy bar
+
+    if (isCorrect) {
+      // Trigger confetti
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
+      });
+
+      // Trigger rainbow flash
+      setTriggerRainbow(true);
+      setTimeout(() => setTriggerRainbow(false), 800);
+    }
   };
 
   const handleNextClick = () => {
     if (selectedOption === null) return;
-    onNext(selectedOption === question.correctAnswerIndex);
+    onNext();
     // Reset local state for next question
     setSelectedOption(null);
     setIsAnswered(false);
+    setShowHint(false);
+    setTriggerRainbow(false);
   };
 
   const getOptionStyles = (index: number) => {
@@ -56,8 +83,32 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   const progressPercentage = ((currentNumber - 1) / totalQuestions) * 100;
 
+  // Energy bar color logic
+  const getEnergyColor = () => {
+    if (energy > 60) return 'bg-yellow-400';
+    if (energy > 30) return 'bg-orange-400';
+    return 'bg-red-500';
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 pb-12">
+    <div className="w-full max-w-2xl mx-auto px-4 pb-12 relative">
+      {/* Rainbow Flash Overlay */}
+      {triggerRainbow && (
+        <div className="fixed inset-0 pointer-events-none z-[100] animate-rainbow-flash opacity-40 mix-blend-overlay" />
+      )}
+
+      {/* Energy Bar */}
+      <div className="mb-6 bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+        <Zap className={`w-6 h-6 ${energy > 0 ? 'text-yellow-500 fill-yellow-500' : 'text-slate-300'}`} />
+        <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+          <div 
+            className={`h-full ${getEnergyColor()} transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,255,0,0.5)]`}
+            style={{ width: `${energy}%` }}
+          />
+        </div>
+        <span className="text-sm font-bold text-slate-600 w-12 text-right">{energy}%</span>
+      </div>
+
       {/* Progress Header */}
       <div className="mb-8">
         <div className="flex justify-between items-end mb-2">
@@ -77,11 +128,33 @@ const QuizView: React.FC<QuizViewProps> = ({
       </div>
 
       {/* Question Card */}
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mb-6">
+      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mb-6 relative">
         <div className="p-8">
-          <h2 className="text-2xl font-bold text-slate-800 leading-snug mb-8">
-            {question.question}
-          </h2>
+          <div className="flex justify-between items-start mb-6">
+             <h2 className="text-2xl font-bold text-slate-800 leading-snug flex-1 mr-4">
+                {question.question}
+            </h2>
+             {!isAnswered && (
+                <button 
+                  onClick={() => setShowHint(!showHint)}
+                  className="p-2 rounded-full hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 transition-colors"
+                  title="Show Hint"
+                >
+                    <Lightbulb className={`w-6 h-6 ${showHint ? 'text-yellow-500 fill-yellow-500' : ''}`} />
+                </button>
+             )}
+          </div>
+
+          {/* Hint Box */}
+          <div className={`
+            overflow-hidden transition-all duration-300 ease-in-out
+            ${showHint ? 'max-h-32 mb-6 opacity-100' : 'max-h-0 mb-0 opacity-0'}
+          `}>
+             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 flex gap-3">
+                <Lightbulb className="w-5 h-5 flex-shrink-0" />
+                <p><strong>Hint:</strong> {question.hint || "Think carefully about the keywords in the question."}</p>
+             </div>
+          </div>
 
           <div className="space-y-3">
             {question.options.map((option, idx) => (
@@ -127,7 +200,7 @@ const QuizView: React.FC<QuizViewProps> = ({
           <div className="flex items-center justify-between">
              <div className="flex items-center gap-2">
                 {selectedOption === question.correctAnswerIndex ? (
-                    <span className="text-emerald-700 font-bold flex items-center gap-2">
+                    <span className="text-emerald-700 font-bold flex items-center gap-2 animate-bounce">
                         Correct! Great job.
                     </span>
                 ) : (
