@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Landmark, Flag, History, ArrowRight } from 'lucide-react';
+import { Landmark, Flag, History, ArrowRight, Stars } from 'lucide-react';
 import { SubjectId } from '../types';
 import { QUIZZES } from '../constants';
 
@@ -10,60 +11,68 @@ interface LandingViewProps {
 const LandingView: React.FC<LandingViewProps> = ({ onSelectSubject }) => {
   const getIcon = (id: string) => {
     switch(id) {
-      case 'civics': return <Landmark className="w-12 h-12 text-blue-600" />;
-      case 'us-history': return <Flag className="w-12 h-12 text-red-600" />;
-      default: return <History className="w-12 h-12 text-emerald-600" />;
+      case 'civics': return <Landmark className="w-10 h-10 text-white" />;
+      case 'us-history': return <Flag className="w-10 h-10 text-white" />;
+      default: return <History className="w-10 h-10 text-white" />;
     }
   };
 
-  const getColorClasses = (id: string) => {
-     switch(id) {
-      case 'civics': return 'bg-blue-50 border-blue-100 hover:border-blue-300 hover:shadow-blue-100';
-      case 'us-history': return 'bg-red-50 border-red-100 hover:border-red-300 hover:shadow-red-100';
-      default: return 'bg-emerald-50 border-emerald-100 hover:border-emerald-300 hover:shadow-emerald-100';
+  const getGradient = (id: string) => {
+    switch(id) {
+      case 'civics': return 'from-blue-500 to-indigo-600 shadow-blue-500/30';
+      case 'us-history': return 'from-red-500 to-rose-600 shadow-red-500/30';
+      default: return 'from-emerald-500 to-teal-600 shadow-emerald-500/30';
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 md:py-12 animate-fadeIn">
-      <div className="text-center mb-12 md:mb-16 space-y-4">
-        <div className="inline-block px-4 py-1.5 mb-2 rounded-full bg-slate-200 text-slate-600 font-bold text-sm tracking-wide uppercase">
-          Mr. Gomez's Class
+    <div className="max-w-6xl mx-auto animate-fadeIn pb-12">
+      {/* Hero Section */}
+      <div className="text-center mb-20 space-y-6 pt-8">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-xs uppercase tracking-widest shadow-sm">
+          <Stars className="w-4 h-4 text-indigo-500" /> Midterm Prep 2024
         </div>
-        <h1 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight leading-tight">
-          Ace Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-emerald-500">Midterms</span>
+        
+        <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+          Have Fun While <br className="hidden md:block" />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-600 animate-pulse">Acing Your Class</span>
         </h1>
-        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto">
+        
+        <p className="text-xl md:text-2xl text-slate-500 max-w-2xl mx-auto font-medium leading-relaxed">
           Select a subject below to start your rapid-fire study session. 
-          Instant feedback, energy tracking, and gamified learning.
+          Instant feedback, competitive games, and mastery tracking.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      {/* Cards Grid */}
+      <div className="grid md:grid-cols-3 gap-8">
         {Object.values(QUIZZES).map((quiz) => (
           <button
             key={quiz.id}
             onClick={() => onSelectSubject(quiz.id)}
-            className={`
-              relative group p-8 rounded-3xl border-2 text-left transition-all duration-300 hover:-translate-y-2 hover:shadow-xl
-              ${getColorClasses(quiz.id)}
-            `}
+            className="group relative bg-white/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-white/50 text-left transition-all duration-500 hover:bg-white/80 hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-2 flex flex-col h-full"
           >
-            <div className="mb-6 bg-white w-20 h-20 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+            {/* Icon Blob */}
+            <div className={`
+              w-20 h-20 rounded-3xl flex items-center justify-center mb-8 bg-gradient-to-br shadow-xl group-hover:scale-110 transition-transform duration-500
+              ${getGradient(quiz.id)}
+            `}>
               {getIcon(quiz.id)}
             </div>
             
-            <h2 className="text-2xl font-bold text-slate-800 mb-3 group-hover:text-blue-700 transition-colors">
+            <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight group-hover:text-indigo-600 transition-colors">
               {quiz.title}
             </h2>
             
-            <p className="text-slate-600 font-medium leading-relaxed mb-8 min-h-[4.5rem]">
+            <p className="text-slate-500 font-medium leading-relaxed mb-8 flex-grow">
               {quiz.description}
             </p>
 
-            <div className="flex items-center text-sm font-bold text-slate-800 uppercase tracking-wide">
+            <div className="flex items-center text-sm font-bold text-slate-900 uppercase tracking-widest pt-6 border-t border-slate-100/50">
               Start Studying 
-              <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+              <span className="ml-auto bg-slate-900 text-white rounded-full p-2 group-hover:bg-indigo-600 transition-colors">
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
             </div>
           </button>
         ))}

@@ -4,11 +4,30 @@ import StartView from './components/StartView';
 import QuizView from './components/QuizView';
 import ResultView from './components/ResultView';
 import LandingView from './components/LandingView';
+import DashboardView from './components/DashboardView'; 
+import TeacherDashboardView from './components/TeacherDashboardView'; 
+import AuthView from './components/AuthView'; 
 import MatchingGame from './components/MatchingGame';
-import MultiplayerGame from './components/MultiplayerGame'; // Import new component
-import { QuizState, SubjectId, GameMode } from './types';
-import { QUIZZES } from './constants';
-import { BookOpen, Users } from 'lucide-react';
+import FlashCardsGame from './components/FlashCardsGame';
+import MultiplayerGame from './components/MultiplayerGame';
+import JeopardyGame from './components/JeopardyGame';
+import WordleGame from './components/WordleGame';
+import BookView from './components/BookView';
+import OutlineView from './components/OutlineView';
+import CourseModulesView from './components/CourseModulesView';
+import BossBattleGame from './components/BossBattleGame';
+import CommerceGame from './components/CommerceGame';
+import TicTacToeGame from './components/TicTacToeGame';
+import HangmanGame from './components/HangmanGame';
+import DeductionGame from './components/DeductionGame';
+import TowerDefenseGame from './components/TowerDefenseGame';
+import WheelFortuneGame from './components/WheelFortuneGame';
+import MillionaireGame from './components/MillionaireGame';
+import AnalysisGame from './components/AnalysisGame';
+import StrategyGame from './components/StrategyGame'; // Unified Strategy Game Component
+import { QuizState, SubjectId, GameMode, Question, User } from './types';
+import { QUIZZES, CIVICS_COURSE_CONTENT, CIVICS_MODULES, WORLD_HISTORY_COURSE_CONTENT, WORLD_HISTORY_MODULES, US_HISTORY_MODULES, US_HISTORY_COURSE_CONTENT } from './constants';
+import { BookOpen, Users, LogIn, UserCircle, LayoutDashboard, LogOut } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeSubject, setActiveSubject] = useState<SubjectId>('world-history');
@@ -18,11 +37,28 @@ const App: React.FC = () => {
   const [score, setScore] = useState(0);
   const [missedQuestions, setMissedQuestions] = useState<number[]>([]);
   const [energy, setEnergy] = useState(0);
-  const [combo, setCombo] = useState(0); // Track combo streak
+  const [combo, setCombo] = useState(0); 
+  
+  const [gameQuestions, setGameQuestions] = useState<Question[]>([]);
+  
+  // Auth State
+  const [showAuth, setShowAuth] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   const currentQuiz = QUIZZES[activeSubject];
 
-  // Reset scroll on state change for better UX
+  // Dynamic Content Loading based on Subject
+  let currentModules = WORLD_HISTORY_MODULES;
+  let currentCourseContent = WORLD_HISTORY_COURSE_CONTENT;
+
+  if (activeSubject === 'civics') {
+      currentModules = CIVICS_MODULES;
+      currentCourseContent = CIVICS_COURSE_CONTENT;
+  } else if (activeSubject === 'us-history') {
+      currentModules = US_HISTORY_MODULES;
+      currentCourseContent = US_HISTORY_COURSE_CONTENT;
+  }
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [gameState, currentQuestionIndex, activeSubject]);
@@ -30,11 +66,11 @@ const App: React.FC = () => {
   const handleLandingSelect = (subject: SubjectId) => {
     setActiveSubject(subject);
     setGameState(QuizState.START);
-    // Reset states
     setScore(0);
     setMissedQuestions([]);
     setEnergy(0);
     setCombo(0);
+    setGameQuestions([]);
   };
 
   const handleSubjectChange = (subject: SubjectId) => {
@@ -46,10 +82,71 @@ const App: React.FC = () => {
         setMissedQuestions([]);
         setEnergy(0);
         setCombo(0);
+        setGameQuestions([]);
     }
   };
 
-  const handleStart = (mode: GameMode) => {
+  // Helper to filter questions based on scope
+  const getFilteredQuestions = (scope: string) => {
+      let filtered = [...currentQuiz.questions];
+      
+      if (scope === 'ALL') {
+          return filtered;
+      }
+
+      // 1. Check for specific Q#-W# format (e.g., Q2-W9)
+      const weekMatch = scope.match(/^(Q\d)-W(\d)$/);
+      if (weekMatch) {
+          const targetQuarter = weekMatch[1];
+          const targetWeek = parseInt(weekMatch[2]);
+          // Filter by both quarter and specific week if available in data
+          // Note: Data needs 'week' property. If not present, this might return empty.
+          filtered = filtered.filter(q => q.quarter === targetQuarter && q.week === targetWeek);
+          
+          // Fallback logic: If strict week filtering yields nothing (because data isn't tagged with weeks yet),
+          // fallback to just the quarter or show everything for that quarter to prevent broken game.
+          if (filtered.length === 0) {
+              console.warn(`No questions found specifically for ${scope}. Falling back to ${targetQuarter}.`);
+              filtered = currentQuiz.questions.filter(q => q.quarter === targetQuarter);
+          }
+      } 
+      // 2. Check for broad Categories (MID, FIN, Q1, Q2, etc.)
+      else if (['MID', 'FIN', 'Q1', 'Q2', 'Q3', 'Q4'].includes(scope)) {
+          filtered = filtered.filter(q => q.quarter === scope);
+      } 
+      // 3. Specific Unit Name
+      else {
+          filtered = filtered.filter(q => q.unit === scope);
+      }
+
+      // Safety check: if still empty, use all questions to prevent crash
+      if (filtered.length === 0) {
+          alert(`No questions found for section "${scope}". Loading all questions instead.`);
+          return [...currentQuiz.questions];
+      }
+
+      return filtered;
+  };
+
+  const handleStart = (mode: GameMode, scope: string = 'ALL') => {
+    // Modes that don't use standard question filtering or handle their own data
+    if (['textbook', 'outline', 'modules', 'analysis'].includes(mode)) {
+        setGameMode(mode);
+        setGameState(QuizState.PLAYING);
+        return;
+    }
+
+    // Get Questions based on scope (Quarter, Week, Unit)
+    let filteredQuestions = getFilteredQuestions(scope);
+
+    // Shuffle logic common for most games
+    // Fisher-Yates Shuffle
+    for (let i = filteredQuestions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [filteredQuestions[i], filteredQuestions[j]] = [filteredQuestions[j], filteredQuestions[i]];
+    }
+
+    setGameQuestions(filteredQuestions);
     setGameMode(mode);
     setGameState(QuizState.PLAYING);
     setCurrentQuestionIndex(0);
@@ -62,17 +159,19 @@ const App: React.FC = () => {
   const handleAnswer = (isCorrect: boolean) => {
     if (isCorrect) {
       setScore(prev => prev + 1);
-      setEnergy(prev => Math.min(100, prev + 10)); // Increase energy
-      setCombo(prev => prev + 1); // Increase combo
+      setEnergy(prev => Math.min(100, prev + 10)); 
+      setCombo(prev => prev + 1); 
     } else {
-      setMissedQuestions(prev => [...prev, currentQuiz.questions[currentQuestionIndex].id]);
-      setEnergy(prev => Math.max(0, prev - 10)); // Decrease energy
-      setCombo(0); // Reset combo
+      if (gameQuestions[currentQuestionIndex]) {
+          setMissedQuestions(prev => [...prev, gameQuestions[currentQuestionIndex].id]);
+      }
+      setEnergy(prev => Math.max(0, prev - 10)); 
+      setCombo(0); 
     }
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < currentQuiz.questions.length - 1) {
+    if (currentQuestionIndex < gameQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
       setGameState(QuizState.FINISHED);
@@ -83,42 +182,79 @@ const App: React.FC = () => {
     setGameState(QuizState.START);
     setEnergy(0);
     setCombo(0);
+    setGameQuestions([]);
   };
 
   const handleHomeClick = () => {
-    setGameState(QuizState.LANDING);
+    if (user) {
+        if (user.role === 'TEACHER') {
+            setGameState(QuizState.TEACHER_DASHBOARD);
+        } else {
+            setGameState(QuizState.DASHBOARD);
+        }
+    } else {
+        setGameState(QuizState.LANDING);
+    }
     setScore(0);
     setMissedQuestions([]);
     setEnergy(0);
     setCombo(0);
+    setGameQuestions([]);
   };
 
   const handleMultiplayerClick = () => {
       setGameState(QuizState.MULTIPLAYER);
   }
 
+  const handleLogin = (user: User) => {
+      setUser(user);
+      setShowAuth(false);
+      if (user.role === 'TEACHER') {
+          setGameState(QuizState.TEACHER_DASHBOARD);
+      } else {
+          setGameState(QuizState.DASHBOARD);
+      }
+  }
+
+  const handleLogout = () => {
+      setUser(null);
+      setGameState(QuizState.LANDING);
+  }
+
+  // Dashboard Handler
+  const handleDashboardAssignment = (mode: GameMode, subject: SubjectId) => {
+      if (subject !== activeSubject) {
+          setActiveSubject(subject);
+      }
+      handleStart(mode);
+  };
+
   const getTabStyle = (id: SubjectId) => {
     const isActive = activeSubject === id;
-    return `px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
+    return `px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${
         isActive 
-        ? 'bg-slate-800 text-white shadow-md' 
-        : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+        ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20 scale-105' 
+        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
     }`;
   };
 
-  // Render logic based on Game Mode and State
   const renderContent = () => {
-    // 1. Landing Page
     if (gameState === QuizState.LANDING) {
       return <LandingView onSelectSubject={handleLandingSelect} />;
     }
 
-    // 2. Multiplayer
+    if (gameState === QuizState.DASHBOARD) {
+        return <DashboardView onStartAssignment={handleDashboardAssignment} userName={user?.name || "Student"} />;
+    }
+
+    if (gameState === QuizState.TEACHER_DASHBOARD && user?.role === 'TEACHER') {
+        return <TeacherDashboardView user={user} />;
+    }
+
     if (gameState === QuizState.MULTIPLAYER) {
         return <MultiplayerGame subjectId={activeSubject} onExit={handleHomeClick} />;
     }
 
-    // 3. Start Screen (Mode Selection)
     if (gameState === QuizState.START) {
       return (
         <StartView 
@@ -131,23 +267,42 @@ const App: React.FC = () => {
       );
     }
 
-    // 4. Playing State
     if (gameState === QuizState.PLAYING) {
-      if (gameMode === 'matching') {
-        return (
-          <MatchingGame 
-            questions={currentQuiz.questions}
-            onFinish={() => setGameState(QuizState.FINISHED)}
-            onExit={handleHomeClick}
-          />
-        );
-      }
+      if (gameMode === 'textbook') return <BookView content={currentCourseContent} onExit={() => setGameState(QuizState.START)} />;
+      if (gameMode === 'outline') return <OutlineView content={currentCourseContent} onExit={() => setGameState(QuizState.START)} />;
+      if (gameMode === 'modules') return <CourseModulesView modules={currentModules} courseContent={currentCourseContent} onExit={() => setGameState(QuizState.START)} />;
+      if (gameMode === 'matching') return <MatchingGame questions={gameQuestions} onFinish={() => setGameState(QuizState.FINISHED)} onExit={handleHomeClick} />;
+      if (gameMode === 'flashcards') return <FlashCardsGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'jeopardy') return <JeopardyGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'wordle') return <WordleGame questions={gameQuestions} onExit={handleHomeClick} />;
       
+      // Arcade Modes
+      if (gameMode === 'boss') return <BossBattleGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'commerce') return <CommerceGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'tictactoe') return <TicTacToeGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'hangman') return <HangmanGame questions={gameQuestions} onExit={handleHomeClick} />;
+      
+      // New Strategy Modes
+      if (gameMode === 'connect4' || gameMode === 'battleship' || gameMode === 'risk' || gameMode === 'checkers') {
+          return <StrategyGame questions={gameQuestions} mode={gameMode} onExit={handleHomeClick} />;
+      }
+
+      // New Arcade Modes
+      if (gameMode === 'guesswho') return <DeductionGame questions={gameQuestions} mode="guesswho" onExit={handleHomeClick} />;
+      if (gameMode === 'guesswhat') return <DeductionGame questions={gameQuestions} mode="guesswhat" onExit={handleHomeClick} />;
+      if (gameMode === 'towerdefense') return <TowerDefenseGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'wheel') return <WheelFortuneGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'millionaire') return <MillionaireGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'analysis') return <AnalysisGame onExit={handleHomeClick} />;
+
+
+      if (gameQuestions.length === 0) return <div className="text-center p-8">Loading...</div>;
+
       return (
         <QuizView 
-          question={currentQuiz.questions[currentQuestionIndex]}
+          question={gameQuestions[currentQuestionIndex]}
           currentNumber={currentQuestionIndex + 1}
-          totalQuestions={currentQuiz.questions.length}
+          totalQuestions={gameQuestions.length}
           energy={energy}
           gameMode={gameMode}
           combo={combo}
@@ -157,95 +312,94 @@ const App: React.FC = () => {
       );
     }
 
-    // 5. Finished State
     if (gameState === QuizState.FINISHED) {
       return (
         <ResultView 
-          result={{
-            score,
-            totalQuestions: currentQuiz.questions.length,
-            missedQuestions
-          }}
-          allQuestions={currentQuiz.questions}
+          result={{ score, totalQuestions: gameQuestions.length, missedQuestions }}
+          allQuestions={currentQuiz.questions} 
           onRestart={handleRestart}
         />
       );
     }
   };
 
+  // Determine if we should show the fancy nav (hide in immersive games)
+  const isImmersiveMode = gameState === QuizState.MULTIPLAYER || gameMode === 'boss' || gameMode === 'towerdefense' || gameMode === 'millionaire' || gameMode === 'wheel' || gameState === QuizState.TEACHER_DASHBOARD || gameMode === 'analysis' || gameMode === 'connect4' || gameMode === 'battleship' || gameMode === 'risk';
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans selection:bg-blue-200">
-      {/* Navbar / Header */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-3">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                {/* Logo & Title */}
+    <div className="min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Floating Navigation Bar */}
+      {!isImmersiveMode && (
+      <nav className="fixed top-4 left-0 right-0 mx-auto max-w-7xl w-[95%] z-50 transition-all duration-300">
+        <div className="bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-indigo-500/10 rounded-2xl px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-6">
                 <button 
                   onClick={handleHomeClick}
-                  className="font-bold text-lg text-slate-800 flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  className="font-extrabold text-xl text-slate-900 flex items-center gap-3 hover:opacity-70 transition-opacity tracking-tight"
                 >
-                    <span className="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm shadow-sm">
-                        <BookOpen className="w-5 h-5" />
-                    </span>
+                    <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <BookOpen className="w-6 h-6" />
+                    </div>
                     <span>Mr. Gomez's Class</span>
                 </button>
 
-                {/* Subject Tabs - Only show if NOT on Landing Page */}
-                {gameState !== QuizState.LANDING && gameState !== QuizState.MULTIPLAYER && (
-                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-full overflow-x-auto max-w-full animate-fadeIn">
-                      <button 
-                          onClick={() => handleSubjectChange('world-history')} 
-                          className={getTabStyle('world-history')}
-                      >
-                          World History
-                      </button>
-                      <button 
-                          onClick={() => handleSubjectChange('civics')} 
-                          className={getTabStyle('civics')}
-                      >
-                          Civics
-                      </button>
-                      <button 
-                          onClick={() => handleSubjectChange('us-history')} 
-                          className={getTabStyle('us-history')}
-                      >
-                          US History
-                      </button>
+                {gameState !== QuizState.LANDING && gameState !== QuizState.DASHBOARD && gameState !== QuizState.TEACHER_DASHBOARD && (
+                  <div className="hidden md:flex items-center gap-1 bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50">
+                      <button onClick={() => handleSubjectChange('world-history')} className={getTabStyle('world-history')}>World History</button>
+                      <button onClick={() => handleSubjectChange('civics')} className={getTabStyle('civics')}>Civics</button>
+                      <button onClick={() => handleSubjectChange('us-history')} className={getTabStyle('us-history')}>US History</button>
                   </div>
                 )}
-                
-                {/* Multiplayer / Host Tab */}
-                {gameState !== QuizState.MULTIPLAYER && gameState !== QuizState.LANDING && (
-                    <button 
-                        onClick={handleMultiplayerClick}
-                        className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700 flex items-center gap-2 shadow-lg shadow-purple-200 transition-all"
-                    >
-                        <Users className="w-4 h-4" /> Host / Join
+            </div>
+            
+            <div className="flex items-center gap-3">
+                {user && gameState !== QuizState.DASHBOARD && gameState !== QuizState.TEACHER_DASHBOARD && (
+                    <button onClick={handleHomeClick} className="text-slate-600 hover:text-indigo-600 font-bold text-sm px-4 py-2 flex items-center gap-2 hover:bg-slate-50 rounded-xl transition-all">
+                        <LayoutDashboard className="w-4 h-4" /> Dashboard
                     </button>
                 )}
 
-                {/* Score Display (only when playing Standard/Speed) */}
-                <div className="hidden sm:block min-w-[80px] text-right">
-                    {gameState === QuizState.PLAYING && gameMode !== 'matching' && (
-                        <div className="text-sm font-medium text-slate-500">
-                        Score: <span className="text-slate-900 font-bold">{score}</span>
+                {gameState !== QuizState.LANDING && (
+                    <button onClick={handleMultiplayerClick} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 flex items-center gap-2 shadow-lg shadow-slate-900/20 transition-all hover:-translate-y-0.5">
+                        <Users className="w-4 h-4" /> Multiplayer
+                    </button>
+                )}
+                
+                {!user ? (
+                    <button onClick={() => setShowAuth(true)} className="text-slate-600 hover:text-indigo-600 font-bold text-sm px-4 py-2 flex items-center gap-2 bg-slate-100 hover:bg-indigo-50 rounded-xl transition-all">
+                        <LogIn className="w-4 h-4" /> Log In
+                    </button>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-slate-100 px-4 py-2 rounded-xl">
+                            <UserCircle className="w-4 h-4 text-emerald-500" />
+                            {user.name}
                         </div>
-                    )}
-                </div>
+                        <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 transition-colors" title="Logout">
+                            <LogOut className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
       </nav>
+      )}
 
-      {/* Main Content Area */}
-      <main className={`${gameState === QuizState.MULTIPLAYER ? 'p-0' : 'py-8 px-4'}`}>
+      {/* For Immersive mode, we might want a small corner exit if it's the Teacher Dashboard */}
+      {isImmersiveMode && gameState === QuizState.TEACHER_DASHBOARD && (
+          <div className="fixed top-4 right-4 z-50">
+              <button onClick={handleLogout} className="bg-white/10 hover:bg-red-500 text-white p-2 rounded-lg backdrop-blur-sm transition-all shadow-lg flex items-center gap-2 text-sm font-bold">
+                  <LogOut className="w-4 h-4" /> Logout
+              </button>
+          </div>
+      )}
+
+      <main className={`transition-all duration-500 ${isImmersiveMode ? 'pt-0' : 'pt-32'} pb-12 ${gameState === QuizState.TEACHER_DASHBOARD ? '' : 'px-4 md:px-6'}`}>
         {renderContent()}
       </main>
 
-       {/* Simple footer - Hide in multiplayer */}
-       {gameState !== QuizState.MULTIPLAYER && (
-        <footer className="text-center py-6 text-slate-400 text-sm">
-            Mr. Gomez's Class &copy; {new Date().getFullYear()}
-        </footer>
+       {showAuth && (
+           <AuthView onLogin={handleLogin} onCancel={() => setShowAuth(false)} />
        )}
     </div>
   );

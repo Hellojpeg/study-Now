@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Question, MatchingCard } from '../types';
-import { ArrowLeft, Trophy, Globe, Scale, Scroll, Landmark, Feather, Book, GraduationCap, PenTool, Hash, Compass, Anchor, Briefcase, Key } from 'lucide-react';
+import { ArrowLeft, Trophy, Globe, Scale, Scroll, Landmark, Feather, Book, GraduationCap, PenTool, Hash, Compass, Anchor, Briefcase, Key, HelpCircle, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { playSuccessSound } from '../utils/audio';
 
@@ -167,13 +168,18 @@ const MatchingGame: React.FC<MatchingGameProps> = ({ questions, onFinish, onExit
               ${card.isMatched ? 'opacity-0 pointer-events-none scale-90' : 'opacity-100'}
             `}
           >
-            {/* Front of Card (Face Down) - Professional/Academic Look */}
-            <div className="absolute inset-0 bg-slate-800 rounded-xl shadow-md border-2 border-slate-700 flex flex-col items-center justify-center backface-hidden group hover:bg-slate-750 transition-colors">
-               <div className="opacity-10 group-hover:opacity-20 transition-opacity">
-                 <Landmark className="w-16 h-16 text-white" />
+            {/* Front of Card (Face Down) - Distinct Colors for Q and A */}
+            <div className={`
+                absolute inset-0 rounded-xl shadow-md border-4 flex flex-col items-center justify-center backface-hidden group transition-colors
+                ${card.type === 'question' 
+                    ? 'bg-slate-800 border-blue-600/50 hover:bg-slate-700' 
+                    : 'bg-slate-800 border-emerald-600/50 hover:bg-slate-700'}
+            `}>
+               <div className={`opacity-30 group-hover:opacity-50 transition-opacity mb-2`}>
+                 {card.type === 'question' ? <HelpCircle className="w-12 h-12 text-blue-400" /> : <CheckCircle2 className="w-12 h-12 text-emerald-400" />}
                </div>
-               <div className="absolute bottom-4 text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">
-                 Mr. Gomez's Class
+               <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${card.type === 'question' ? 'text-blue-400' : 'text-emerald-400'}`}>
+                 {card.type === 'question' ? 'Question' : 'Answer'}
                </div>
             </div>
 

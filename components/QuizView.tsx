@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Question, GameMode } from '../types';
-import { ArrowRight, CheckCircle, XCircle, AlertCircle, Lightbulb, Zap, Clock, Flame, Square, Triangle, Circle } from 'lucide-react';
+import { ArrowRight, CheckCircle, XCircle, AlertCircle, Lightbulb, Zap, Clock, Flame, Square, Triangle, Circle, Target } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { playSuccessSound, playFailureSound } from '../utils/audio';
+import { WORLD_HISTORY_COURSE_CONTENT } from '../constants';
 
 interface QuizViewProps {
   question: Question;
@@ -32,6 +34,9 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [triggerGreenFlash, setTriggerGreenFlash] = useState(false);
   const [triggerRedFlash, setTriggerRedFlash] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10); // Speed mode timer
+
+  // Find Benchmark Description
+  const benchmarkInfo = WORLD_HISTORY_COURSE_CONTENT.benchmarks.find(b => b.code === question.benchmark);
 
   // Reset timer on new question
   useEffect(() => {
@@ -168,8 +173,8 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   // Determine wrapper classes for shake effect
   const wrapperClass = (gameMode === 'speed' && isAnswered && selectedOption === question.correctAnswerIndex) 
-    ? "w-full max-w-2xl mx-auto px-4 pb-12 relative z-10 animate-shake" 
-    : "w-full max-w-2xl mx-auto px-4 pb-12 relative z-10";
+    ? "w-full max-w-3xl mx-auto px-4 pb-32 relative z-10 animate-shake" 
+    : "w-full max-w-3xl mx-auto px-4 pb-32 relative z-10";
 
   // Dynamic Background for Speed Mode
   const SpeedModeBackground = () => (
@@ -379,6 +384,31 @@ const QuizView: React.FC<QuizViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* --- STANDARDS FOOTER (Visible at all times) --- */}
+        {question.benchmark && (
+            <div className={`fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:max-w-sm z-30 transition-all duration-500 ${isAnswered ? 'opacity-50' : 'opacity-100'}`}>
+                <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-start gap-3">
+                    <div className="bg-purple-100 p-2 rounded-lg text-purple-700 shrink-0">
+                        <Target className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded tracking-wide">
+                                {question.benchmark}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                Standard
+                            </span>
+                        </div>
+                        <p className="text-xs font-medium text-slate-700 leading-snug">
+                            {benchmarkInfo ? benchmarkInfo.description : 'Standard description loading...'}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )}
+
       </div>
     </>
   );
