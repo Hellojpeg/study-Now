@@ -1,14 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Classroom, Question } from '../types';
 import { MOCK_CLASSES, MOCK_STUDENTS } from '../constants';
-import { LayoutDashboard, Users, BookOpen, Settings, Plus, Search, MoreVertical, Trash2, Edit, Save, Check, X, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Settings, Plus, Search, MoreVertical, Trash2, Edit, Save, Check, X, ClipboardList, Link as LinkIcon, RefreshCw, Globe, Shield, Activity, Database, CheckCircle, AlertTriangle, Key, Copy, Server, Terminal, Lock, Eye, EyeOff } from 'lucide-react';
+import { playSuccessSound } from '../utils/audio';
 
 interface TeacherDashboardViewProps {
   user: User;
 }
 
-type Tab = 'OVERVIEW' | 'CLASSES' | 'ROSTER' | 'CONTENT';
+type Tab = 'OVERVIEW' | 'CLASSES' | 'ROSTER' | 'CONTENT' | 'SETTINGS';
+
+interface WebhookLog {
+    id: string;
+    timestamp: string;
+    method: 'POST' | 'GET';
+    endpoint: string;
+    status: number;
+    payload?: string;
+}
 
 const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW');
@@ -19,6 +29,68 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
   const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
   const [newQuizTitle, setNewQuizTitle] = useState('');
   const [newQuestions, setNewQuestions] = useState<Partial<Question>[]>([]);
+
+  // LTI Settings State
+  const [ltiConfig, setLtiConfig] = useState({
+      provider: 'Canvas',
+      domain: 'https://midterm-prep.edu',
+      clientId: '10000000000001',
+      deploymentId: '8f9d2a3b-4c5e-6f7g-8h9i-12345',
+      publicKey: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----',
+      syncRoster: true,
+      syncGrades: true,
+      syncContent: false
+  });
+  
+  const [showSecret, setShowSecret] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  
+  // Webhook Simulation
+  const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
+  const [isListening, setIsListening] = useState(true);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom of logs
+  useEffect(() => {
+      if (logsEndRef.current) {
+          logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+  }, [webhookLogs]);
+
+  // Simulate incoming LTI traffic
+  useEffect(() => {
+      if (!isListening || activeTab !== 'SETTINGS') return;
+
+      const interval = setInterval(() => {
+          if (Math.random() > 0.7) {
+              const events = [
+                  { method: 'POST', endpoint: '/lti/1.3/launch', status: 200, payload: 'Context: World History P1' },
+                  { method: 'POST', endpoint: '/lti/1.3/gradebook', status: 201, payload: 'Score Update: 95%' },
+                  { method: 'GET', endpoint: '/lti/jwks.json', status: 200, payload: 'Public Key Fetch' },
+                  { method: 'POST', endpoint: '/api/roster/sync', status: 200, payload: 'Synced 24 Students' }
+              ] as const;
+              
+              const evt = events[Math.floor(Math.random() * events.length)];
+              
+              setWebhookLogs(prev => [...prev.slice(-19), {
+                  id: Math.random().toString(36).substr(2, 9),
+                  timestamp: new Date().toLocaleTimeString(),
+                  method: evt.method,
+                  endpoint: evt.endpoint,
+                  status: evt.status,
+                  payload: evt.payload
+              }]);
+          }
+      }, 3000);
+
+      return () => clearInterval(interval);
+  }, [isListening, activeTab]);
+
+  const handleCopy = (text: string, fieldId: string) => {
+      navigator.clipboard.writeText(text);
+      setCopiedField(fieldId);
+      setTimeout(() => setCopiedField(null), 2000);
+  };
 
   const handleCreateClass = () => {
       const name = prompt("Enter Class Name (e.g. World History)");
@@ -292,6 +364,237 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                       </div>
                   </div>
               );
+
+          case 'SETTINGS':
+              return (
+                  <div className="max-w-6xl mx-auto animate-fadeIn pb-12">
+                      <div className="mb-8 flex justify-between items-end">
+                          <div>
+                              <h2 className="text-3xl font-black text-slate-900 mb-2">LTI 1.3 Integration</h2>
+                              <p className="text-slate-600">Connect to Canvas, Schoology, or Blackboard via LTI 1.3 standards.</p>
+                          </div>
+                          <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold border border-emerald-100 flex items-center gap-2">
+                              <Activity className="w-4 h-4 animate-pulse" /> Gateway Online
+                          </div>
+                      </div>
+
+                      <div className="grid lg:grid-cols-2 gap-8">
+                          
+                          {/* Left Column: Configuration */}
+                          <div className="space-y-8">
+                              
+                              {/* Credentials Card */}
+                              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                                  <div className="bg-slate-50 p-6 border-b border-slate-200 flex justify-between items-center">
+                                      <div className="flex items-center gap-3">
+                                          <div className="bg-indigo-600 p-2 rounded-lg text-white">
+                                              <Shield className="w-5 h-5" />
+                                          </div>
+                                          <h3 className="font-bold text-slate-800">App Credentials</h3>
+                                      </div>
+                                      <select 
+                                        value={ltiConfig.provider}
+                                        onChange={(e) => setLtiConfig({...ltiConfig, provider: e.target.value})}
+                                        className="text-sm border border-slate-300 rounded-lg px-3 py-1 font-bold text-slate-600 focus:outline-none"
+                                      >
+                                          <option>Canvas</option>
+                                          <option>Schoology</option>
+                                          <option>Moodle</option>
+                                      </select>
+                                  </div>
+                                  
+                                  <div className="p-6 space-y-6">
+                                      {/* Client ID */}
+                                      <div>
+                                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Client ID (Developer Key)</label>
+                                          <div className="flex gap-2">
+                                              <div className="relative flex-grow">
+                                                  <input 
+                                                    type="text" 
+                                                    value={ltiConfig.clientId}
+                                                    readOnly
+                                                    className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm text-slate-700 focus:outline-none"
+                                                  />
+                                              </div>
+                                              <button 
+                                                onClick={() => handleCopy(ltiConfig.clientId, 'clientId')}
+                                                className={`p-3 rounded-xl border-2 transition-all ${copiedField === 'clientId' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
+                                              >
+                                                  {copiedField === 'clientId' ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                              </button>
+                                          </div>
+                                      </div>
+
+                                      {/* Deployment ID */}
+                                      <div>
+                                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Deployment ID</label>
+                                          <div className="flex gap-2">
+                                              <div className="relative flex-grow">
+                                                  <input 
+                                                    type={showSecret ? "text" : "password"}
+                                                    value={ltiConfig.deploymentId}
+                                                    readOnly
+                                                    className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm text-slate-700 focus:outline-none"
+                                                  />
+                                                  <button onClick={() => setShowSecret(!showSecret)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                      {showSecret ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
+                                                  </button>
+                                              </div>
+                                              <button 
+                                                onClick={() => handleCopy(ltiConfig.deploymentId, 'depId')}
+                                                className={`p-3 rounded-xl border-2 transition-all ${copiedField === 'depId' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
+                                              >
+                                                  {copiedField === 'depId' ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                              </button>
+                                          </div>
+                                      </div>
+
+                                      {/* Public Key */}
+                                      <div>
+                                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Public Key (JWK)</label>
+                                          <div className="relative">
+                                              <textarea 
+                                                value={ltiConfig.publicKey}
+                                                readOnly
+                                                rows={4}
+                                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-600 focus:outline-none resize-none"
+                                              />
+                                              <button 
+                                                onClick={() => handleCopy(ltiConfig.publicKey, 'pk')}
+                                                className="absolute top-2 right-2 p-2 bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-indigo-600 shadow-sm"
+                                              >
+                                                  <Copy className="w-4 h-4" />
+                                              </button>
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              {/* URLs Card */}
+                              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                                  <div className="bg-slate-50 p-6 border-b border-slate-200 flex items-center gap-3">
+                                      <div className="bg-blue-600 p-2 rounded-lg text-white">
+                                          <LinkIcon className="w-5 h-5" />
+                                      </div>
+                                      <h3 className="font-bold text-slate-800">Configuration URLs</h3>
+                                  </div>
+                                  <div className="p-6 space-y-6">
+                                      {[
+                                          { label: 'Login URL', val: `${ltiConfig.domain}/lti/login` },
+                                          { label: 'Redirect URI', val: `${ltiConfig.domain}/lti/callback` },
+                                          { label: 'Keyset URL (JWKS)', val: `${ltiConfig.domain}/.well-known/jwks.json` },
+                                          { label: 'Target Link URI (Launch)', val: `${ltiConfig.domain}/lti/launch` },
+                                      ].map((field, i) => (
+                                          <div key={i}>
+                                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">{field.label}</label>
+                                              <div className="flex gap-2">
+                                                  <input 
+                                                    type="text" 
+                                                    value={field.val} 
+                                                    readOnly 
+                                                    className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm text-slate-600 focus:outline-none"
+                                                  />
+                                                  <button 
+                                                    onClick={() => handleCopy(field.val, `url-${i}`)}
+                                                    className={`p-3 rounded-xl border-2 transition-all ${copiedField === `url-${i}` ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
+                                                  >
+                                                      {copiedField === `url-${i}` ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                                  </button>
+                                              </div>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Right Column: Webhook Console */}
+                          <div className="space-y-8 flex flex-col h-full">
+                              
+                              <div className="bg-slate-900 rounded-3xl shadow-xl overflow-hidden flex flex-col flex-grow border border-slate-800">
+                                  <div className="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
+                                      <div className="flex items-center gap-3">
+                                          <div className="bg-emerald-500/20 text-emerald-400 p-2 rounded-lg">
+                                              <Terminal className="w-5 h-5" />
+                                          </div>
+                                          <div>
+                                              <h3 className="font-bold text-slate-200 text-sm">Webhook Console</h3>
+                                              <div className="flex items-center gap-2 mt-0.5">
+                                                  <span className="relative flex h-2 w-2">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                  </span>
+                                                  <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Live Listening</span>
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <button 
+                                        onClick={() => setWebhookLogs([])}
+                                        className="text-slate-500 hover:text-white p-2 rounded-lg transition-colors"
+                                      >
+                                          <Trash2 className="w-4 h-4" />
+                                      </button>
+                                  </div>
+
+                                  <div className="flex-grow p-4 font-mono text-xs space-y-3 overflow-y-auto max-h-[600px] scrollbar-hide bg-slate-900">
+                                      {webhookLogs.length === 0 && (
+                                          <div className="text-slate-600 text-center py-12 italic">Waiting for incoming requests...</div>
+                                      )}
+                                      {webhookLogs.map((log) => (
+                                          <div key={log.id} className="animate-fadeIn">
+                                              <div className="flex items-start gap-3">
+                                                  <span className="text-slate-500 min-w-[60px]">{log.timestamp}</span>
+                                                  <div className="flex-1">
+                                                      <div className="flex items-center gap-2">
+                                                          <span className={`font-bold ${log.method === 'POST' ? 'text-blue-400' : 'text-purple-400'}`}>{log.method}</span>
+                                                          <span className="text-slate-300">{log.endpoint}</span>
+                                                          <span className={`px-1.5 rounded text-[10px] font-bold ${log.status < 300 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                              {log.status}
+                                                          </span>
+                                                      </div>
+                                                      {log.payload && (
+                                                          <div className="mt-1 text-slate-500 pl-2 border-l-2 border-slate-700">
+                                                              {log.payload}
+                                                          </div>
+                                                      )}
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      ))}
+                                      <div ref={logsEndRef} />
+                                  </div>
+                              </div>
+
+                              {/* Sync Toggles */}
+                              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                                  <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                      <Database className="w-5 h-5 text-purple-600" /> Data Synchronization
+                                  </h3>
+                                  <div className="space-y-4">
+                                      {[
+                                          { id: 'syncRoster', label: 'Roster Auto-Sync', desc: 'Automatically import students from LMS roster.' },
+                                          { id: 'syncGrades', label: 'Grade Passback', desc: 'Send quiz results directly to the LMS gradebook.' },
+                                          { id: 'syncContent', label: 'Deep Linking', desc: 'Allow embedding games as assignments.' }
+                                      ].map((opt) => (
+                                          <div key={opt.id} className="flex items-center justify-between">
+                                              <div>
+                                                  <div className="font-bold text-slate-700 text-sm">{opt.label}</div>
+                                                  <div className="text-xs text-slate-400">{opt.desc}</div>
+                                              </div>
+                                              <button 
+                                                onClick={() => setLtiConfig({...ltiConfig, [opt.id]: !ltiConfig[opt.id as keyof typeof ltiConfig]})}
+                                                className={`w-10 h-6 rounded-full transition-colors relative ${ltiConfig[opt.id as keyof typeof ltiConfig] ? 'bg-purple-600' : 'bg-slate-200'}`}
+                                              >
+                                                  <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${ltiConfig[opt.id as keyof typeof ltiConfig] ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                              </button>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+
+                          </div>
+                      </div>
+                  </div>
+              );
       }
   };
 
@@ -337,7 +640,12 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
           <header className="flex justify-between items-center mb-8">
               <h1 className="text-2xl font-black text-slate-800 uppercase tracking-wide opacity-50">{activeTab}</h1>
               <div className="flex gap-4">
-                  <button className="p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-400 hover:text-indigo-600"><Settings className="w-5 h-5" /></button>
+                  <button 
+                    onClick={() => setActiveTab('SETTINGS')}
+                    className={`p-2 rounded-full shadow-sm border transition-all ${activeTab === 'SETTINGS' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-100 text-slate-400 hover:text-indigo-600'}`}
+                  >
+                      <Settings className="w-5 h-5" />
+                  </button>
               </div>
           </header>
           {renderContent()}
