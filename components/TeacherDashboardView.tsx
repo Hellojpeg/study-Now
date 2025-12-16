@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { MOCK_CLASSES } from '../constants';
-import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X } from 'lucide-react';
+import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X, Calculator } from 'lucide-react';
 
 interface TeacherDashboardViewProps {
   user: User;
@@ -23,7 +23,6 @@ interface QuizDraft {
   textInput: string;
   file: File | null;
   questions: { question: string, options: string[], correctAnswerIndex: number }[];
-  // Replaced simple answerKey with detailed manual questions
   manualQuestions: ManualQuestion[]; 
 }
 
@@ -107,12 +106,12 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
       switch (q.type) {
           case 'MCQ':
               return (
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                       {['A','B','C','D','E'].map(opt => (
                           <button
                               key={opt}
                               onClick={() => updateManualQuestion(index, 'answer', opt)}
-                              className={`w-8 h-8 rounded text-xs font-bold transition-all border ${q.answer === opt ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                              className={`w-10 h-10 rounded-lg text-sm font-bold transition-all border-2 ${q.answer === opt ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
                           >
                               {opt}
                           </button>
@@ -121,7 +120,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
               );
           case 'SELECT_ALL':
               return (
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                       {['A','B','C','D','E'].map(opt => {
                           const isSelected = q.answer.includes(opt);
                           return (
@@ -133,7 +132,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                                       else newAns.push(opt);
                                       updateManualQuestion(index, 'answer', newAns.join(','));
                                   }}
-                                  className={`w-8 h-8 rounded text-xs font-bold transition-all border ${isSelected ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                                  className={`w-10 h-10 rounded-lg text-sm font-bold transition-all border-2 ${isSelected ? 'bg-purple-600 text-white border-purple-600 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}
                               >
                                   {opt}
                               </button>
@@ -146,43 +145,55 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                   <div className="flex gap-2">
                       <button 
                         onClick={() => updateManualQuestion(index, 'answer', 'T')}
-                        className={`px-3 py-1.5 rounded text-xs font-bold border ${q.answer === 'T' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-500 border-slate-200'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold border-2 transition-all ${q.answer === 'T' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-500 border-slate-200'}`}
                       >
-                          True
+                          TRUE
                       </button>
                       <button 
                         onClick={() => updateManualQuestion(index, 'answer', 'F')}
-                        className={`px-3 py-1.5 rounded text-xs font-bold border ${q.answer === 'F' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-slate-500 border-slate-200'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold border-2 transition-all ${q.answer === 'F' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-slate-500 border-slate-200'}`}
                       >
-                          False
+                          FALSE
                       </button>
                   </div>
               );
           case 'NUMBER':
               return (
-                  <div className="flex items-center gap-2">
-                      <Hash className="w-4 h-4 text-slate-400" />
+                  <div className="flex items-center gap-2 relative">
+                      <Calculator className="w-4 h-4 text-slate-400 absolute left-3" />
                       <input 
                           type="number" 
                           value={q.answer}
                           onChange={(e) => updateManualQuestion(index, 'answer', e.target.value)}
-                          placeholder="0.0"
-                          className="w-24 p-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
+                          placeholder="Correct Value"
+                          className="w-40 pl-9 pr-3 py-2 text-sm font-mono font-bold border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
                       />
                   </div>
               );
           case 'SHORT':
-          case 'ESSAY':
               return (
-                  <div className="flex items-center gap-2 w-full">
-                      <AlignLeft className="w-4 h-4 text-slate-400" />
+                  <div className="w-full">
                       <input 
                           type="text" 
                           value={q.answer}
                           onChange={(e) => updateManualQuestion(index, 'answer', e.target.value)}
-                          placeholder={q.type === 'SHORT' ? "Expected keywords..." : "Grading rubric keywords..."}
-                          className="w-full p-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50"
+                          placeholder="Keywords or Model Answer (Short)"
+                          className="w-full p-2.5 text-sm border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition-all"
                       />
+                  </div>
+              );
+          case 'ESSAY':
+              return (
+                  <div className="w-full relative">
+                      <textarea 
+                          value={q.answer}
+                          onChange={(e) => updateManualQuestion(index, 'answer', e.target.value)}
+                          placeholder="Enter model response or rubric keywords..."
+                          className="w-full p-3 text-sm border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white min-h-[80px] resize-none"
+                      />
+                      <div className="absolute bottom-2 right-3 text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                          Min. 3 Sentences
+                      </div>
                   </div>
               );
       }
