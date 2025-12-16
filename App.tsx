@@ -324,7 +324,7 @@ const App: React.FC = () => {
   };
 
   // Determine if we should show the fancy nav (hide in immersive games)
-  const isImmersiveMode = gameState === QuizState.MULTIPLAYER || gameMode === 'boss' || gameMode === 'towerdefense' || gameMode === 'millionaire' || gameMode === 'wheel' || gameState === QuizState.TEACHER_DASHBOARD || gameMode === 'analysis' || gameMode === 'connect4' || gameMode === 'battleship' || gameMode === 'risk';
+  const isImmersiveMode = gameState === QuizState.MULTIPLAYER || gameMode === 'boss' || gameMode === 'towerdefense' || gameMode === 'millionaire' || gameMode === 'wheel' || gameMode === 'analysis' || gameMode === 'connect4' || gameMode === 'battleship' || gameMode === 'risk';
 
   return (
     <div className="min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
