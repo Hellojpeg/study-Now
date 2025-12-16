@@ -2,10 +2,19 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { MOCK_CLASSES } from '../constants';
-import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap } from 'lucide-react';
+import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X } from 'lucide-react';
 
 interface TeacherDashboardViewProps {
   user: User;
+}
+
+type QuestionType = 'MCQ' | 'SELECT_ALL' | 'TRUE_FALSE' | 'NUMBER' | 'SHORT' | 'ESSAY';
+
+interface ManualQuestion {
+    id: number;
+    type: QuestionType;
+    answer: string;
+    tags: string;
 }
 
 interface QuizDraft {
@@ -14,7 +23,8 @@ interface QuizDraft {
   textInput: string;
   file: File | null;
   questions: { question: string, options: string[], correctAnswerIndex: number }[];
-  answerKey: string[];
+  // Replaced simple answerKey with detailed manual questions
+  manualQuestions: ManualQuestion[]; 
 }
 
 const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => {
@@ -29,7 +39,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
     textInput: '',
     file: null,
     questions: [],
-    answerKey: Array(5).fill('')
+    manualQuestions: Array.from({ length: 5 }, (_, i) => ({ id: i, type: 'MCQ', answer: '', tags: '' }))
   });
 
   const handleCreateQuiz = () => {
@@ -40,7 +50,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
       textInput: '',
       file: null,
       questions: [],
-      answerKey: Array(5).fill('')
+      manualQuestions: Array.from({ length: 5 }, (_, i) => ({ id: i, type: 'MCQ', answer: '', tags: '' }))
     });
     setQuizStep('SOURCE');
   };
@@ -60,6 +70,27 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
     setQuizStep('EDITOR');
   };
 
+  const updateManualQuestion = (index: number, field: keyof ManualQuestion, value: any) => {
+      const updated = [...quizDraft.manualQuestions];
+      updated[index] = { ...updated[index], [field]: value };
+      setQuizDraft(prev => ({ ...prev, manualQuestions: updated }));
+  };
+
+  const addManualQuestion = () => {
+      setQuizDraft(prev => ({
+          ...prev,
+          manualQuestions: [
+              ...prev.manualQuestions,
+              { id: prev.manualQuestions.length, type: 'MCQ', answer: '', tags: '' }
+          ]
+      }));
+  };
+
+  const removeManualQuestion = (index: number) => {
+      const updated = quizDraft.manualQuestions.filter((_, i) => i !== index);
+      setQuizDraft(prev => ({ ...prev, manualQuestions: updated }));
+  };
+
   const NavItem = ({ icon: Icon, label, tab }: { icon: any, label: string, tab: typeof activeTab }) => (
       <button 
         onClick={() => { setActiveTab(tab); setQuizStep('LIST'); }}
@@ -70,6 +101,92 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
           {activeTab === tab && isSidebarOpen && <ChevronRight className="w-4 h-4 ml-auto opacity-50" />}
       </button>
   );
+
+  // Helper to render the specific input based on question type
+  const renderAnswerInput = (q: ManualQuestion, index: number) => {
+      switch (q.type) {
+          case 'MCQ':
+              return (
+                  <div className="flex gap-1">
+                      {['A','B','C','D','E'].map(opt => (
+                          <button
+                              key={opt}
+                              onClick={() => updateManualQuestion(index, 'answer', opt)}
+                              className={`w-8 h-8 rounded text-xs font-bold transition-all border ${q.answer === opt ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                          >
+                              {opt}
+                          </button>
+                      ))}
+                  </div>
+              );
+          case 'SELECT_ALL':
+              return (
+                  <div className="flex gap-1">
+                      {['A','B','C','D','E'].map(opt => {
+                          const isSelected = q.answer.includes(opt);
+                          return (
+                              <button
+                                  key={opt}
+                                  onClick={() => {
+                                      let newAns = q.answer ? q.answer.split(',') : [];
+                                      if (isSelected) newAns = newAns.filter(a => a !== opt);
+                                      else newAns.push(opt);
+                                      updateManualQuestion(index, 'answer', newAns.join(','));
+                                  }}
+                                  className={`w-8 h-8 rounded text-xs font-bold transition-all border ${isSelected ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                              >
+                                  {opt}
+                              </button>
+                          );
+                      })}
+                  </div>
+              );
+          case 'TRUE_FALSE':
+              return (
+                  <div className="flex gap-2">
+                      <button 
+                        onClick={() => updateManualQuestion(index, 'answer', 'T')}
+                        className={`px-3 py-1.5 rounded text-xs font-bold border ${q.answer === 'T' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-500 border-slate-200'}`}
+                      >
+                          True
+                      </button>
+                      <button 
+                        onClick={() => updateManualQuestion(index, 'answer', 'F')}
+                        className={`px-3 py-1.5 rounded text-xs font-bold border ${q.answer === 'F' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-slate-500 border-slate-200'}`}
+                      >
+                          False
+                      </button>
+                  </div>
+              );
+          case 'NUMBER':
+              return (
+                  <div className="flex items-center gap-2">
+                      <Hash className="w-4 h-4 text-slate-400" />
+                      <input 
+                          type="number" 
+                          value={q.answer}
+                          onChange={(e) => updateManualQuestion(index, 'answer', e.target.value)}
+                          placeholder="0.0"
+                          className="w-24 p-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                  </div>
+              );
+          case 'SHORT':
+          case 'ESSAY':
+              return (
+                  <div className="flex items-center gap-2 w-full">
+                      <AlignLeft className="w-4 h-4 text-slate-400" />
+                      <input 
+                          type="text" 
+                          value={q.answer}
+                          onChange={(e) => updateManualQuestion(index, 'answer', e.target.value)}
+                          placeholder={q.type === 'SHORT' ? "Expected keywords..." : "Grading rubric keywords..."}
+                          className="w-full p-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50"
+                      />
+                  </div>
+              );
+      }
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -424,50 +541,86 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                                             </button>
                                         </div>
                                     ) : (
-                                        /* PAPER MODE ANSWER KEY */
-                                        <div className="flex-1 overflow-y-auto p-6">
-                                            <div className="flex justify-between items-center mb-6 bg-yellow-50 p-6 rounded-xl border border-yellow-100">
-                                                <div className="flex items-center gap-3 text-yellow-800 font-bold">
-                                                    <div className="bg-yellow-100 p-2 rounded-lg"><ListChecks className="w-5 h-5"/></div>
-                                                    Answer Key Configuration
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <label className="text-xs font-bold text-slate-500 uppercase">Question Count:</label>
-                                                    <input 
-                                                        type="number" 
-                                                        min="1" 
-                                                        max="50"
-                                                        value={quizDraft.answerKey.length} 
-                                                        className="w-20 p-2 border border-slate-300 rounded-lg text-center font-bold" 
-                                                        onChange={(e) => {
-                                                            const count = Math.max(1, Math.min(50, parseInt(e.target.value) || 0));
-                                                            setQuizDraft(prev => ({...prev, answerKey: Array(count).fill('')}));
-                                                        }}
-                                                    />
-                                                </div>
+                                        /* PAPER MODE ANSWER KEY - NEW TABLE DESIGN */
+                                        <div className="flex-1 flex flex-col h-full bg-slate-50">
+                                            {/* Table Header */}
+                                            <div className="grid grid-cols-[50px_140px_1fr_200px_50px] gap-4 px-6 py-3 bg-white border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider items-center sticky top-0 z-10 shadow-sm">
+                                                <div className="text-center">#</div>
+                                                <div>Type</div>
+                                                <div>Answer Key</div>
+                                                <div>Tags</div>
+                                                <div></div>
                                             </div>
-                                            
-                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                                {quizDraft.answerKey.map((ans, idx) => (
-                                                    <div key={idx} className="flex flex-col items-center gap-2 p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition-all">
-                                                        <span className="font-black text-slate-300 text-sm">#{idx + 1}</span>
-                                                        <div className="flex gap-1">
-                                                            {['A','B','C','D'].map(opt => (
+
+                                            {/* Rows */}
+                                            <div className="overflow-y-auto flex-1 p-2">
+                                                <div className="space-y-1">
+                                                    {quizDraft.manualQuestions.map((q, idx) => (
+                                                        <div key={q.id} className="grid grid-cols-[50px_140px_1fr_200px_50px] gap-4 px-4 py-3 bg-white border border-slate-200 rounded-lg items-center shadow-sm hover:border-blue-300 transition-all group">
+                                                            {/* Col 1: Number */}
+                                                            <div className="font-bold text-slate-700 text-center text-sm">{idx + 1}</div>
+                                                            
+                                                            {/* Col 2: Type Dropdown */}
+                                                            <div>
+                                                                <div className="relative">
+                                                                    <select 
+                                                                        value={q.type}
+                                                                        onChange={(e) => updateManualQuestion(idx, 'type', e.target.value)}
+                                                                        className="w-full pl-8 pr-2 py-1.5 text-xs font-bold border border-slate-300 rounded-md bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
+                                                                    >
+                                                                        <option value="MCQ">Multiple Choice</option>
+                                                                        <option value="SELECT_ALL">Select All</option>
+                                                                        <option value="TRUE_FALSE">True / False</option>
+                                                                        <option value="NUMBER">Number / Math</option>
+                                                                        <option value="SHORT">Short Answer</option>
+                                                                        <option value="ESSAY">Long Essay</option>
+                                                                    </select>
+                                                                    <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                                        {q.type === 'MCQ' && <ListChecks className="w-3.5 h-3.5" />}
+                                                                        {q.type === 'SELECT_ALL' && <CheckSquare className="w-3.5 h-3.5" />}
+                                                                        {q.type === 'TRUE_FALSE' && <Check className="w-3.5 h-3.5" />}
+                                                                        {q.type === 'NUMBER' && <Hash className="w-3.5 h-3.5" />}
+                                                                        {q.type === 'SHORT' && <AlignLeft className="w-3.5 h-3.5" />}
+                                                                        {q.type === 'ESSAY' && <FileText className="w-3.5 h-3.5" />}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Col 3: Answer Input (Dynamic) */}
+                                                            <div className="flex items-center">
+                                                                {renderAnswerInput(q, idx)}
+                                                            </div>
+
+                                                            {/* Col 4: Tags */}
+                                                            <div>
+                                                                <input 
+                                                                    type="text" 
+                                                                    placeholder="Add tags (e.g. Unit 1)" 
+                                                                    value={q.tags}
+                                                                    onChange={(e) => updateManualQuestion(idx, 'tags', e.target.value)}
+                                                                    className="w-full text-xs p-1.5 border border-transparent hover:border-slate-300 focus:border-indigo-500 bg-transparent focus:bg-white rounded transition-all outline-none"
+                                                                />
+                                                            </div>
+
+                                                            {/* Col 5: Actions */}
+                                                            <div className="text-right opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <button 
-                                                                    key={opt}
-                                                                    onClick={() => {
-                                                                        const newKey = [...quizDraft.answerKey];
-                                                                        newKey[idx] = opt;
-                                                                        setQuizDraft(prev => ({...prev, answerKey: newKey}));
-                                                                    }}
-                                                                    className={`w-8 h-8 rounded-lg font-bold text-sm transition-all shadow-sm ${ans === opt ? 'bg-indigo-600 text-white shadow-indigo-200' : 'bg-white border border-slate-200 hover:bg-slate-100 text-slate-600'}`}
+                                                                    onClick={() => removeManualQuestion(idx)}
+                                                                    className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded transition-colors"
                                                                 >
-                                                                    {opt}
+                                                                    <X className="w-4 h-4" />
                                                                 </button>
-                                                            ))}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                </div>
+                                                
+                                                <button 
+                                                    onClick={addManualQuestion}
+                                                    className="w-full mt-4 py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-bold hover:bg-white hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <Plus className="w-4 h-4"/> Add Question
+                                                </button>
                                             </div>
                                         </div>
                                     )}
