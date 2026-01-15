@@ -161,7 +161,7 @@ export const DEDUCTION_TARGETS: DeductionTarget[] = [
     { id: 'gw1', name: "George Washington", image: "https://images.unsplash.com/photo-1551543360-1798dfb84232?auto=format&fit=crop&q=80&w=200", category: 'person', clues: ["I was the first President of the US.", "I commanded the Continental Army.", "My face is on the one-dollar bill."], description: "The Father of his Country." },
     { id: 'gw2', name: "Julius Caesar", image: "https://images.unsplash.com/photo-1555661530-68c8e2319648?auto=format&fit=crop&q=80&w=200", category: 'person', clues: ["I was a Roman Dictator.", "I was assassinated by Senators.", "I crossed the Rubicon."], description: "Famous Roman General and Dictator." },
     { id: 'gw3', name: "Cleopatra", image: "https://images.unsplash.com/photo-1504194569302-3c8c7c9081db?auto=format&fit=crop&q=80&w=200", category: 'person', clues: ["I was the last Pharaoh of Egypt.", "I allied with Rome.", "I spoke many languages."], description: "Queen of the Nile." },
-    { id: 'gw4', name: "Pericles", image: "https://images.unsplash.com/photo-1620662758177-33d34d35db52?auto=format&fit=crop&q=80&w=200", category: 'person', clues: ["I led Athens during its Golden Age.", "I ordered the construction of the Parthenon.", "I died during a plague in wartime."], description: "Champion of Athenian Democracy." },
+    { id: 'gw4', name: "Pericles", image: "https://images.unsplash.com/photo-1620662758177-33d34db5db52?auto=format&fit=crop&q=80&w=200", category: 'person', clues: ["I led Athens during its Golden Age.", "I ordered the construction of the Parthenon.", "I died during a plague in wartime."], description: "Champion of Athenian Democracy." },
     
     // OBJECTS (Guess What)
     { id: 'go1', name: "The Pyramids", image: "https://images.unsplash.com/photo-1503177119275-0aa32b3a9368?auto=format&fit=crop&q=80&w=200", category: 'object', clues: ["I am a massive stone structure.", "I served as a tomb for Pharaohs.", "I am located in Giza."], description: "Ancient wonders of the world." },
@@ -249,7 +249,29 @@ export const US_HISTORY_COURSE_CONTENT: CourseContent = {
     ]
 };
 
-// --- QUIZZES ---
+// --- GREECE, ATHENS AND SPARTA BANK (Merged into World History) ---
+const GREECE_QUESTIONS: Question[] = [
+  { id: 301, unit: 'Greece, Athens and Sparta', question: 'Why did ancient Greece develop independent city-states instead of one unified empire?', options: ['Lack of trade routes', 'Mountainous terrain separated communities', 'Constant civil wars', 'Influence from Rome'], correctAnswerIndex: 1 },
+  { id: 302, unit: 'Greece, Athens and Sparta', question: 'How did the Aegean Sea most influence Greek civilization?', options: ['Prevented foreign invasion', 'Encouraged isolation', 'Served as a highway for trade and travel', 'Flooded farmland'], correctAnswerIndex: 2 },
+  { id: 303, unit: 'Greece, Athens and Sparta', question: 'Which crops were most commonly grown in ancient Greece?', options: ['Rice, corn, cotton', 'Olives, grapes, wheat, barley', 'Potatoes, beans, squash', 'Sugar, tea, spices'], correctAnswerIndex: 1 },
+  { id: 304, unit: 'Greece, Athens and Sparta', question: 'The Minoans were best known as:', options: ['Mainland warriors', 'Nomadic herders', 'Island traders and sailors', 'Desert farmers'], correctAnswerIndex: 2 },
+  { id: 305, unit: 'Greece, Athens and Sparta', question: 'The Mycenaeans were best known as:', options: ['Philosophers and teachers', 'Fortress builders and warriors', 'Peaceful merchants', 'Democratic reformers'], correctAnswerIndex: 1 },
+  { id: 306, unit: 'Greece, Athens and Sparta', question: 'What event helped trigger the Greek Dark Age?', options: ['Trojan War', 'Dorian invasions', 'Persian conquest', 'Roman expansion'], correctAnswerIndex: 1 },
+  { id: 307, unit: 'Greece, Athens and Sparta', question: 'What major innovation helped end the Dark Age?', options: ['Democracy', 'Coinage', 'The Greek alphabet', 'Standing armies'], correctAnswerIndex: 2 },
+  { id: 308, unit: 'Greece, Athens and Sparta', question: 'Why did Greek city-states establish colonies?', options: ['Spread religion', 'Escape Persian rule', 'Overpopulation and lack of farmland', 'Avoid military service'], correctAnswerIndex: 2 },
+  { id: 309, unit: 'Greece, Athens and Sparta', question: 'What economic change improved Greek trade?', options: ['Barter replacement with metal coins', 'Creation of banks', 'Use of paper money', 'Tax farming'], correctAnswerIndex: 0 },
+  { id: 310, unit: 'Greece, Athens and Sparta', question: 'What was the Acropolis primarily used for?', options: ['Marketplace', 'Housing citizens', 'Fortification and religious center', 'Farmland'], correctAnswerIndex: 2 },
+  { id: 311, unit: 'Greece, Athens and Sparta', question: 'What was the Agora?', options: ['Military training camp', 'Burial ground', 'Marketplace and political center', 'Palace complex'], correctAnswerIndex: 2 },
+  { id: 312, unit: 'Greece, Athens and Sparta', question: 'Who qualified as a citizen in most Greek poleis?', options: ['All residents', 'Free land-owning men born in the city-state', 'Anyone who served in the army', 'All taxpayers'], correctAnswerIndex: 1 },
+  { id: 313, unit: 'Greece, Athens and Sparta', question: 'Greek hoplites were:', options: ['Professional mercenaries', 'Sailors', 'Citizen-soldiers who fought in formations', 'Archers'], correctAnswerIndex: 2 },
+  { id: 314, unit: 'Greece, Athens and Sparta', question: 'Athens practiced which form of government?', options: ['Monarchy', 'Oligarchy', 'Direct democracy', 'Dictatorship'], correctAnswerIndex: 2 },
+  { id: 315, unit: 'Greece, Athens and Sparta', question: 'Sparta was ruled primarily by:', options: ['An elected president', 'Council of elders and kings', 'Large popular assemblies', 'Religious leaders'], correctAnswerIndex: 1 },
+  { id: 316, unit: 'Greece, Athens and Sparta', question: 'Education in Athens focused on:', options: ['Military survival', 'Farming skills', 'Producing well-rounded citizens', 'Obedience and endurance'], correctAnswerIndex: 2 },
+  { id: 317, unit: 'Greece, Athens and Sparta', question: 'Spartan education emphasized:', options: ['Literature and art', 'Public speaking', 'Military training and discipline', 'Trade skills'], correctAnswerIndex: 2 },
+  { id: 318, unit: 'Greece, Athens and Sparta', question: 'Women in Athens were generally:', options: ['Political leaders', 'Soldiers', 'Restricted to domestic roles', 'Land-owning citizens'], correctAnswerIndex: 2 },
+  { id: 319, unit: 'Greece, Athens and Sparta', question: 'Spartan women were unique because they:', options: ['Had no legal rights', 'Could own land and manage estates', 'Were excluded from physical training', 'Were priests only'], correctAnswerIndex: 1 },
+  { id: 320, unit: 'Greece, Athens and Sparta', question: 'Sparta’s economy relied heavily on:', options: ['Overseas trade', 'Craft production', 'Helot labor and farming', 'Banking systems'], correctAnswerIndex: 2 }
+];
 
 // Comprehensive list of questions for World History Midterm (Prehistory, Mesopotamia, Egypt, Judaism)
 const WH_MIDTERM: Question[] = [
@@ -289,23 +311,22 @@ const WH_MIDTERM: Question[] = [
   {id: 27, unit: 'Unit 4 – Judaism', questionType: 'MCQ', question: 'Which empire destroyed Jerusalem and forced Jews into exile?', options: ['Egyptian', 'Persian', 'Greek', 'Neo-Babylonian'], correctAnswerIndex: 3, quarter: 'MID'},
   {id: 28, unit: 'Unit 4 – Judaism', questionType: 'MCQ', question: 'Judaism shares belief in one God with', options: ['Buddhism', 'Hinduism', 'Christianity', 'Shinto'], correctAnswerIndex: 2, quarter: 'MID'},
   {id: 29, unit: 'Unit 4 – Judaism', questionType: 'MCQ', question: 'The Diaspora refers to', options: ['Jewish rule of empires', 'Jewish migration and settlement outside Israel', 'the building of the First Temple', 'Roman persecution only'], correctAnswerIndex: 1, quarter: 'MID'},
-  {id: 30, unit: 'Unit 4 – Judaism', questionType: 'MCQ', question: 'Rabbis were important in ancient Judaism because they', options: ['ruled governments', 'collected taxes', 'taught and explained the Torah', 'commanded armies'], correctAnswerIndex: 2, quarter: 'MID'}
+  {id: 30, unit: 'Unit 4 – Judaism', questionType: 'MCQ', question: 'Rabbis were important in ancient Judaism because they', options: ['ruled governments', 'collected taxes', 'taught and explained the Torah', 'commanded armies'], correctAnswerIndex: 2, quarter: 'MID'},
+
+  // NEW UNIT – Greece, Athens and Sparta
+  ...GREECE_QUESTIONS
 ];
 
 // --- CIVICS: LEGISLATIVE BRANCH (50+ QUESTIONS) ---
 const CIV_MIDTERM: Question[] = [
-  // ... (Keep existing Civics questions)
   {id: 101, unit: 'Legislative Branch', questionType: 'MCQ', question: 'The legislative branch of the U.S. government is described in which Article of the Constitution?', options: ['Article I', 'Article II', 'Article III', 'Article IV'], correctAnswerIndex: 0, quarter: 'Q1'},
   {id: 102, unit: 'Legislative Branch', questionType: 'MCQ', question: 'The U.S. Congress is "bicameral", which means:', options: ['It has three branches', 'It has two chambers (houses)', 'It meets twice a year', 'It has two presidents'], correctAnswerIndex: 1, quarter: 'Q1'},
-  // ... Truncated for brevity, assuming standard 50+ questions remain
 ];
 
 // --- US HISTORY UNIT 4: THE AMERICAN REVOLUTION (55 Questions from Source Text) ---
 const US_MIDTERM: Question[] = [
-  // ... (Keep existing US History questions)
   {id: 201, unit: 'Unit 4 - Revolution', benchmark: 'SS.8.A.3.6', questionType: 'MCQ', bloomLevel: 'REMEMBER', question: 'According to Albigence Waldo, what was a major hardship faced by soldiers at Valley Forge?', options: ['Too much rain', 'Lack of ammunition', 'Poor food and cold weather', 'Attacks by bears'], correctAnswerIndex: 2, quarter: 'MID'},
   {id: 202, unit: 'Unit 4 - Revolution', benchmark: 'SS.8.A.3.6', questionType: 'MCQ', bloomLevel: 'ANALYZE', question: 'In his diary, Surgeon Albigence Waldo contrasts the "Confusion" of the camp with:', options: ['The glory of battle', 'The sweet Felicities of home', 'The richness of the King', 'The warmth of the sun'], correctAnswerIndex: 1, quarter: 'MID'},
-  // ... Truncated for brevity
 ];
 
 export const QUIZZES: Record<SubjectId, QuizData> = {
@@ -330,10 +351,7 @@ export const QUIZZES: Record<SubjectId, QuizData> = {
 };
 
 export const CIVICS_MODULES: CourseModule[] = [];
-
-// ... (Keep existing Module definitions)
 export const WORLD_HISTORY_MODULES: CourseModule[] = [
-    // ... Existing content
     {
         id: 1,
         title: "Module 6: Ancient Greece",
@@ -348,26 +366,7 @@ export const WORLD_HISTORY_MODULES: CourseModule[] = [
             { term: "Oligarchy", definition: "A government in which a few wealthy people hold power." },
             { term: "Mythology", definition: "Stories about gods and heroes that try to explain how the world works." }
         ],
-        chapters: [
-            // ... (Content remains same as previous steps)
-        ]
-    },
-    {
-        id: 2,
-        title: "Q2 Week 9: Guided Reading",
-        focus: "Greek Geography & Civilization",
-        keyTopics: ["Balkan Peninsula", "Minoans", "Mycenaeans", "Dark Age", "Polis", "Citizenship"],
-        standardCodes: ["SS.6.G.1.6", "SS.6.W.3.2"],
-        vocabulary: [
-            { term: "Polis", definition: "The early Greek city-state, made up of a city and the surrounding countryside and run like an independent country." },
-            { term: "Agora", definition: "In early Greek city-states, an open area that served as both a market and a meeting place." },
-            { term: "Phalanx", definition: "A group of armed foot soldiers in ancient Greece arranged close together in rows." },
-            { term: "Oligarchy", definition: "A government in which a small group has control." },
-            { term: "Democracy", definition: "A government by the people." }
-        ],
-        chapters: [
-            // ... (Content remains same as previous steps)
-        ]
+        chapters: []
     }
 ];
 

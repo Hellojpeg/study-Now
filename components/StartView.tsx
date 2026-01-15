@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, History, Clock, BrainCircuit, Landmark, Flag, Zap, Layers, Copy, GraduationCap, LayoutGrid, Type, Book, List, Library, Calendar, Sword, Coins, Hash, Lock, Search, Shield, RotateCw, DollarSign, PenTool, Map, Grid3X3, Crosshair, Circle, Swords, MousePointer2 } from 'lucide-react';
+import { BookOpen, History, Landmark, Flag, Zap, LayoutGrid, Calendar, Sword, Coins, Hash, Search, Shield, DollarSign, Grid3X3, Crosshair, Circle, Swords, MousePointer2, ChevronRight } from 'lucide-react';
 import { SubjectId, GameMode } from '../types';
 import { QUIZZES } from '../constants';
 
@@ -33,9 +33,9 @@ const StartView: React.FC<StartViewProps> = ({
 
   const getHeaderIcon = () => {
     switch(subjectId) {
-      case 'civics': return <Landmark className="w-10 h-10 md:w-12 md:h-12 text-white" />;
-      case 'us-history': return <Flag className="w-10 h-10 md:w-12 md:h-12 text-white" />;
-      default: return <History className="w-10 h-10 md:w-12 md:h-12 text-white" />;
+      case 'civics': return <Landmark className="w-10 h-10 text-white" />;
+      case 'us-history': return <Flag className="w-10 h-10 text-white" />;
+      default: return <History className="w-10 h-10 text-white" />;
     }
   };
 
@@ -48,29 +48,10 @@ const StartView: React.FC<StartViewProps> = ({
   };
 
   const handleStartGame = (mode: GameMode) => {
-    if (!selectedScope) {
-        // Optional: Shake effect or highlight dropdown could go here
-        return; 
-    }
+    if (!selectedScope) return; 
     onStart(mode, selectedScope);
   };
 
-  // Helper to generate Week 1-9 options
-  const renderQuarterWeeks = (quarter: number) => {
-      const weeks = Array.from({length: 9}, (_, i) => i + 1);
-      return (
-          <optgroup label={`Quarter ${quarter}`}>
-              <option value={`Q${quarter}`}>Full Quarter {quarter} Content</option>
-              {weeks.map(w => (
-                  <option key={`Q${quarter}-W${w}`} value={`Q${quarter}-W${w}`}>
-                      Q{quarter} - Week {w}
-                  </option>
-              ))}
-          </optgroup>
-      );
-  };
-
-  // Helper for disabled state styling
   const getButtonClass = (baseClass: string) => {
       if (!selectedScope) {
           return `${baseClass} opacity-50 grayscale cursor-not-allowed transform-none hover:translate-y-0 hover:shadow-none`;
@@ -79,22 +60,22 @@ const StartView: React.FC<StartViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center animate-fadeIn max-w-7xl mx-auto px-4 pb-20 w-full">
-      {/* Header */}
-      <div className="flex flex-col items-center text-center mb-12 pt-4 md:pt-8 w-full">
-          <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center shadow-2xl mb-6 md:mb-8 ${getHeaderColor()}`}>
+    <div className="flex flex-col items-center animate-fadeIn max-w-[95vw] mx-auto px-4 pb-12 w-full h-[85vh] overflow-hidden">
+      {/* Reduced Header Height to fit Viewport */}
+      <div className="flex flex-col items-center text-center mb-4 pt-2 w-full shrink-0">
+          <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shadow-xl mb-3 ${getHeaderColor()}`}>
              {getHeaderIcon()}
           </div>
-          <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight leading-tight">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
             {title} Prep
           </h1>
-          <p className="text-lg md:text-xl text-slate-500 max-w-lg font-medium px-4">
+          <p className="text-xs md:text-sm text-slate-500 max-w-lg font-medium px-4">
             {description}
           </p>
       </div>
 
       {/* Scope Selector Widget */}
-      <div className="w-full max-w-xl mb-12 relative group z-20">
+      <div className="w-full max-w-lg mb-6 relative group z-20 shrink-0">
          <div className={`absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur transition duration-1000 ${selectedScope ? 'opacity-20' : 'opacity-60 animate-pulse'}`}></div>
          <div className="relative bg-white p-2 rounded-2xl shadow-xl flex items-center border border-slate-100">
             <div className={`pl-4 pr-2 ${!selectedScope ? 'text-indigo-500' : 'text-slate-400'}`}>
@@ -103,23 +84,17 @@ const StartView: React.FC<StartViewProps> = ({
             <select 
                 value={selectedScope} 
                 onChange={(e) => setSelectedScope(e.target.value)}
-                className="w-full p-3 md:p-4 bg-transparent font-bold text-slate-800 text-base md:text-lg focus:outline-none cursor-pointer truncate pr-8"
+                className="w-full p-2 md:p-3 bg-transparent font-bold text-slate-800 text-sm md:text-base focus:outline-none cursor-pointer truncate pr-8"
             >
-                <option value="" disabled>Choose a Section...</option>
+                <option value="" disabled>Select a Unit or Exam Section...</option>
                 
-                <optgroup label="Exams">
-                    <option value="MID">Midterm Exam (Cumulative)</option>
-                    <option value="FIN">Final Exam (Cumulative)</option>
-                    <option value="ALL">All Available Questions</option>
+                <optgroup label="Core Midterm Prep">
+                    <option value="MID">World History Midterm (Cumulative)</option>
+                    <option value="ALL">Complete Question Bank</option>
                 </optgroup>
 
-                {renderQuarterWeeks(1)}
-                {renderQuarterWeeks(2)}
-                {renderQuarterWeeks(3)}
-                {renderQuarterWeeks(4)}
-
                 {availableUnits.length > 0 && (
-                    <optgroup label="Specific Units">
+                    <optgroup label="Specific Study Sections">
                         {availableUnits.map(unit => (
                             <option key={unit} value={unit}>
                                {unit}
@@ -127,161 +102,99 @@ const StartView: React.FC<StartViewProps> = ({
                         ))}
                     </optgroup>
                 )}
+                
+                <optgroup label="Quarter Content">
+                    <option value="Q1">Quarter 1 Content</option>
+                    <option value="Q2">Quarter 2 Content</option>
+                    <option value="Q3">Quarter 3 Content</option>
+                    <option value="Q4">Quarter 4 Content</option>
+                </optgroup>
             </select>
-            {!selectedScope && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <span className="flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-                    </span>
-                </div>
-            )}
          </div>
          {!selectedScope && (
-             <div className="text-center mt-3 text-indigo-500 text-sm font-bold animate-bounce">
-                 Please select a section to enable game modes below
+             <div className="text-center mt-2 text-indigo-500 text-[10px] font-black uppercase tracking-widest animate-bounce">
+                 Select a section to unlock game modes
              </div>
          )}
       </div>
 
-      {/* CORE MODES */}
-      <div className="w-full mb-12">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 ml-1">Core Modes</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              {/* Standard */}
-              <button 
-                onClick={() => handleStartGame('standard')} 
-                disabled={!selectedScope}
-                className={getButtonClass("group bg-white rounded-3xl p-6 border border-slate-100 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-left flex flex-col h-full min-h-[160px] relative overflow-hidden")}
-              >
-                  <div className="bg-blue-50 w-14 h-14 rounded-2xl flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
-                      <BookOpen className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-1">Standard Mode</h3>
-                  <p className="text-slate-500 text-sm font-medium">Classic multiple choice.</p>
-              </button>
-              
-              {/* Class Royale */}
-              <button 
-                onClick={() => handleStartGame('classroyale')} 
-                disabled={!selectedScope}
-                className={getButtonClass("group bg-slate-900 rounded-3xl p-6 shadow-2xl hover:shadow-indigo-500/20 transition-all hover:-translate-y-1 text-left flex flex-col h-full min-h-[160px] relative overflow-hidden ring-4 ring-blue-500/20")}
-              >
-                  <div className="bg-blue-500 w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
-                      <Swords className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-1">Class Royale</h3>
-                  <p className="text-blue-300 text-sm font-bold">New Mode: Card Combat</p>
-              </button>
+      {/* SCROLLABLE MODES AREA to prevent viewport overflow */}
+      <div className="w-full overflow-y-auto pr-2 custom-scrollbar flex-grow">
+          {/* CORE MODES */}
+          <div className="w-full mb-6">
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 ml-1">Featured Modes</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <button 
+                    onClick={() => handleStartGame('standard')} 
+                    disabled={!selectedScope}
+                    className={getButtonClass("group bg-white rounded-2xl p-4 border border-slate-100 shadow-md hover:shadow-lg transition-all hover:-translate-y-1 text-left flex flex-col h-full relative overflow-hidden")}
+                  >
+                      <div className="bg-blue-50 w-10 h-10 rounded-xl flex items-center justify-center text-blue-600 mb-3 group-hover:scale-110 transition-transform">
+                          <BookOpen className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900 mb-0.5">Quiz Mode</h3>
+                      <p className="text-slate-500 text-[10px] font-medium leading-tight">Standard multiple choice mastery.</p>
+                  </button>
+                  
+                  <button 
+                    onClick={() => handleStartGame('classroyale')} 
+                    disabled={!selectedScope}
+                    className={getButtonClass("group bg-slate-900 rounded-2xl p-4 shadow-xl hover:shadow-indigo-500/20 transition-all hover:-translate-y-1 text-left flex flex-col h-full relative overflow-hidden ring-4 ring-blue-500/10")}
+                  >
+                      <div className="bg-blue-500 w-10 h-10 rounded-xl flex items-center justify-center text-white mb-3 group-hover:scale-110 transition-transform">
+                          <Swords className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-base font-bold text-white mb-0.5">Class Royale</h3>
+                      <p className="text-blue-300 text-[10px] font-bold">Strategy & Deck Combat</p>
+                  </button>
 
-              {/* Study Snake */}
-              <button 
-                onClick={() => handleStartGame('studysnake')} 
-                disabled={!selectedScope}
-                className={getButtonClass("group bg-emerald-600 rounded-3xl p-6 shadow-2xl hover:shadow-emerald-500/20 transition-all hover:-translate-y-1 text-left flex flex-col h-full min-h-[160px] relative overflow-hidden ring-4 ring-emerald-500/20")}
-              >
-                  <div className="bg-white/10 w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
-                      <MousePointer2 className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-1">Study Snake</h3>
-                  <p className="text-emerald-100 text-sm font-bold animate-pulse">New Mode: Arcade Prep</p>
-              </button>
-          </div>
-      </div>
-
-      {/* ARCADE */}
-      <div className="w-full mb-12">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 ml-1">Arcade & Strategy</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-               {/* Tile Component Helper */}
-               {[
-                 { id: 'jeopardy', icon: LayoutGrid, color: 'text-amber-500', bg: 'bg-amber-50', title: 'Jeopardy', desc: 'Board Game' },
-                 { id: 'speed', icon: Zap, color: 'text-indigo-500', bg: 'bg-indigo-50', title: 'Speed Run', desc: '10s Timer' },
-                 { id: 'boss', icon: Sword, color: 'text-red-500', bg: 'bg-red-50', title: 'Boss Battle', desc: 'RPG Strategy' },
-                 { id: 'commerce', icon: Coins, color: 'text-emerald-500', bg: 'bg-emerald-50', title: 'Tycoon', desc: 'Economy Sim' },
-                 { id: 'towerdefense', icon: Shield, color: 'text-orange-500', bg: 'bg-orange-50', title: 'Tower Defense', desc: 'Defend & Build' },
-                 { id: 'millionaire', icon: DollarSign, color: 'text-blue-500', bg: 'bg-blue-50', title: 'Millionaire', desc: 'Ladder Climb' },
-                 { id: 'connect4', icon: Grid3X3, color: 'text-indigo-500', bg: 'bg-indigo-50', title: 'Connect 4', desc: 'Turn-Based Strategy' },
-                 { id: 'battleship', icon: Crosshair, color: 'text-sky-500', bg: 'bg-sky-50', title: 'Battleship', desc: 'Naval Combat' },
-                 { id: 'risk', icon: Map, color: 'text-rose-500', bg: 'bg-rose-50', title: 'Conquest', desc: 'Risk-Style Map' },
-                 { id: 'checkers', icon: Circle, color: 'text-purple-500', bg: 'bg-purple-50', title: 'Checkers', desc: 'Classic Strategy' },
-                 { id: 'guesswho', icon: Search, color: 'text-pink-500', bg: 'bg-pink-50', title: 'Guess Who?', desc: 'Deduction' },
-                 { id: 'guesswhat', icon: BrainCircuit, color: 'text-teal-500', bg: 'bg-teal-50', title: 'Guess What?', desc: 'Artifacts' },
-                 { id: 'wheel', icon: RotateCw, color: 'text-yellow-500', bg: 'bg-yellow-50', title: 'Wheel', desc: 'Puzzle Spin' },
-                 { id: 'tictactoe', icon: Hash, color: 'text-slate-500', bg: 'bg-slate-100', title: 'Tic Tac Toe', desc: 'Classic' },
-               ].map(game => (
-                   <button 
-                     key={game.id}
-                     onClick={() => handleStartGame(game.id as GameMode)} 
-                     disabled={!selectedScope}
-                     className={getButtonClass("flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 hover:shadow-lg transition-all text-left group min-h-[5rem] overflow-hidden")}
-                   >
-                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${game.bg} group-hover:scale-110 transition-transform`}>
-                           <game.icon className={`w-6 h-6 ${game.color}`} />
-                       </div>
-                       <div className="min-w-0">
-                           <div className="font-bold text-slate-800 truncate text-sm md:text-base">{game.title}</div>
-                           <div className="text-xs text-slate-500 font-medium truncate">{game.desc}</div>
-                       </div>
-                   </button>
-               ))}
-          </div>
-      </div>
-
-      {/* REVIEW & VOCAB */}
-      <div className="w-full mb-12">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 ml-1">Review & Vocab</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-             <button disabled={!selectedScope} onClick={() => handleStartGame('matching')} className={getButtonClass("bg-white/60 p-6 rounded-3xl border border-white/50 hover:bg-white transition-all hover:shadow-lg flex flex-col gap-4 text-left min-h-[140px]")}>
-                 <Layers className="w-8 h-8 text-indigo-500" />
-                 <div>
-                    <h3 className="font-bold text-lg text-slate-900">Memory Match</h3>
-                    <p className="text-sm text-slate-500">Flip & Match Terms</p>
-                 </div>
-             </button>
-             <button disabled={!selectedScope} onClick={() => handleStartGame('flashcards')} className={getButtonClass("bg-white/60 p-6 rounded-3xl border border-white/50 hover:bg-white transition-all hover:shadow-lg flex flex-col gap-4 text-left min-h-[140px]")}>
-                 <Copy className="w-8 h-8 text-emerald-500" />
-                 <div>
-                    <h3 className="font-bold text-lg text-slate-900">Flash Cards</h3>
-                    <p className="text-sm text-slate-500">Quick Review</p>
-                 </div>
-             </button>
-             <button disabled={!selectedScope} onClick={() => handleStartGame('wordle')} className={getButtonClass("bg-white/60 p-6 rounded-3xl border border-white/50 hover:bg-white transition-all hover:shadow-lg flex flex-col gap-4 text-left min-h-[140px]")}>
-                 <Type className="w-8 h-8 text-pink-500" />
-                 <div>
-                    <h3 className="font-bold text-lg text-slate-900">Wordle</h3>
-                    <p className="text-sm text-slate-500">Guess the Term</p>
-                 </div>
-             </button>
-          </div>
-      </div>
-
-       {/* Study Resources Section - Available for ALL, NO DISABLED STATE */}
-        <div className="w-full">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 ml-1">Digital Textbook (Always Available)</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-             <button onClick={() => onStart('modules', 'ALL')} className="bg-gradient-to-br from-indigo-900 to-slate-900 p-6 rounded-3xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all text-left flex items-center gap-6 col-span-1 md:col-span-2 lg:col-span-1 relative overflow-hidden min-h-[120px]">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none -mr-10 -mt-10"></div>
-              <div className="p-3 bg-white/10 rounded-xl text-indigo-200 flex-shrink-0"><Library className="w-8 h-8" /></div>
-              <div className="relative z-10 min-w-0">
-                  <h3 className="text-xl font-bold text-white truncate">Interactive Modules</h3>
-                  <p className="text-indigo-200 text-sm truncate">Rich curriculum & quizzes.</p>
+                  <button 
+                    onClick={() => handleStartGame('studysnake')} 
+                    disabled={!selectedScope}
+                    className={getButtonClass("group bg-emerald-600 rounded-2xl p-4 shadow-xl hover:shadow-emerald-500/20 transition-all hover:-translate-y-1 text-left flex flex-col h-full relative overflow-hidden ring-4 ring-emerald-500/10")}
+                  >
+                      <div className="bg-white/10 w-10 h-10 rounded-xl flex items-center justify-center text-white mb-3 group-hover:scale-110 transition-transform">
+                          <MousePointer2 className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-base font-bold text-white mb-0.5">Study Snake</h3>
+                      <p className="text-emerald-100 text-[10px] font-bold">Arcade Rapid Review</p>
+                  </button>
               </div>
-            </button>
-             <button onClick={() => onStart('analysis', 'ALL')} className="bg-white p-6 rounded-3xl border border-slate-100 hover:border-slate-300 hover:shadow-lg transition-all text-left flex items-center gap-6 min-h-[120px]">
-              <div className="p-3 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0"><PenTool className="w-8 h-8" /></div>
-              <div className="min-w-0"><h3 className="text-xl font-bold text-slate-900 truncate">Document Analysis</h3><p className="text-slate-500 text-sm truncate">Higher order thinking.</p></div>
-            </button>
-            <button onClick={() => onStart('textbook', 'ALL')} className="bg-white p-6 rounded-3xl border border-slate-100 hover:border-slate-300 hover:shadow-lg transition-all text-left flex items-center gap-6 min-h-[120px]">
-              <div className="p-3 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0"><Book className="w-8 h-8" /></div>
-              <div className="min-w-0"><h3 className="text-xl font-bold text-slate-900 truncate">Digital Reader</h3><p className="text-slate-500 text-sm truncate">Focus Mode.</p></div>
-            </button>
-            <button onClick={() => onStart('outline', 'ALL')} className="bg-white p-6 rounded-3xl border border-slate-100 hover:border-slate-300 hover:shadow-lg transition-all text-left flex items-center gap-6 min-h-[120px]">
-              <div className="p-3 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0"><List className="w-8 h-8" /></div>
-              <div className="min-w-0"><h3 className="text-xl font-bold text-slate-900 truncate">Benchmarks</h3><p className="text-slate-500 text-sm truncate">Course standards.</p></div>
-            </button>
           </div>
-        </div>
+
+          {/* ARCADE GRID */}
+          <div className="w-full">
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 ml-1">More Ways to Play</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 pb-6">
+                   {[
+                     { id: 'jeopardy', icon: LayoutGrid, color: 'text-amber-500', bg: 'bg-amber-50', title: 'Jeopardy' },
+                     { id: 'speed', icon: Zap, color: 'text-indigo-500', bg: 'bg-indigo-50', title: 'Speed Run' },
+                     { id: 'boss', icon: Sword, color: 'text-red-500', bg: 'bg-red-50', title: 'Boss Battle' },
+                     { id: 'commerce', icon: Coins, color: 'text-emerald-500', bg: 'bg-emerald-50', title: 'Tycoon' },
+                     { id: 'towerdefense', icon: Shield, color: 'text-orange-500', bg: 'bg-orange-50', title: 'TD Game' },
+                     { id: 'millionaire', icon: DollarSign, color: 'text-blue-500', bg: 'bg-blue-50', title: 'Millionaire' },
+                     { id: 'connect4', icon: Grid3X3, color: 'text-indigo-500', bg: 'bg-indigo-50', title: 'Connect 4' },
+                     { id: 'battleship', icon: Crosshair, color: 'text-sky-500', bg: 'bg-sky-50', title: 'Battleship' },
+                     { id: 'risk', icon: Swords, color: 'text-rose-500', bg: 'bg-rose-50', title: 'Conquest' },
+                     { id: 'checkers', icon: Circle, color: 'text-purple-500', bg: 'bg-purple-50', title: 'Checkers' },
+                   ].map(game => (
+                       <button 
+                         key={game.id}
+                         onClick={() => handleStartGame(game.id as GameMode)} 
+                         disabled={!selectedScope}
+                         className={getButtonClass("flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-slate-300 hover:shadow-lg transition-all text-left group")}
+                       >
+                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${game.bg} group-hover:scale-110 transition-transform`}>
+                               <game.icon className={`w-4 h-4 ${game.color}`} />
+                           </div>
+                           <div className="min-w-0">
+                               <div className="font-bold text-slate-800 truncate text-[11px]">{game.title}</div>
+                           </div>
+                       </button>
+                   ))}
+              </div>
+          </div>
+      </div>
     </div>
   );
 };
