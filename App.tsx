@@ -24,7 +24,9 @@ import TowerDefenseGame from './components/TowerDefenseGame';
 import WheelFortuneGame from './components/WheelFortuneGame';
 import MillionaireGame from './components/MillionaireGame';
 import AnalysisGame from './components/AnalysisGame';
-import StrategyGame from './components/StrategyGame'; // Unified Strategy Game Component
+import StrategyGame from './components/StrategyGame';
+import ClassRoyaleGame from './components/ClassRoyaleGame';
+import StudySnakeGame from './components/StudySnakeGame';
 import { QuizState, SubjectId, GameMode, Question, User } from './types';
 import { QUIZZES, CIVICS_COURSE_CONTENT, CIVICS_MODULES, WORLD_HISTORY_COURSE_CONTENT, WORLD_HISTORY_MODULES, US_HISTORY_MODULES, US_HISTORY_COURSE_CONTENT } from './constants';
 import { BookOpen, Users, LogIn, UserCircle, LayoutDashboard, LogOut } from 'lucide-react';
@@ -99,27 +101,20 @@ const App: React.FC = () => {
       if (weekMatch) {
           const targetQuarter = weekMatch[1];
           const targetWeek = parseInt(weekMatch[2]);
-          // Filter by both quarter and specific week if available in data
-          // Note: Data needs 'week' property. If not present, this might return empty.
           filtered = filtered.filter(q => q.quarter === targetQuarter && q.week === targetWeek);
           
-          // Fallback logic: If strict week filtering yields nothing (because data isn't tagged with weeks yet),
-          // fallback to just the quarter or show everything for that quarter to prevent broken game.
           if (filtered.length === 0) {
               console.warn(`No questions found specifically for ${scope}. Falling back to ${targetQuarter}.`);
               filtered = currentQuiz.questions.filter(q => q.quarter === targetQuarter);
           }
       } 
-      // 2. Check for broad Categories (MID, FIN, Q1, Q2, etc.)
       else if (['MID', 'FIN', 'Q1', 'Q2', 'Q3', 'Q4'].includes(scope)) {
           filtered = filtered.filter(q => q.quarter === scope);
       } 
-      // 3. Specific Unit Name
       else {
           filtered = filtered.filter(q => q.unit === scope);
       }
 
-      // Safety check: if still empty, use all questions to prevent crash
       if (filtered.length === 0) {
           alert(`No questions found for section "${scope}". Loading all questions instead.`);
           return [...currentQuiz.questions];
@@ -129,18 +124,14 @@ const App: React.FC = () => {
   };
 
   const handleStart = (mode: GameMode, scope: string = 'ALL') => {
-    // Modes that don't use standard question filtering or handle their own data
     if (['textbook', 'outline', 'modules', 'analysis'].includes(mode)) {
         setGameMode(mode);
         setGameState(QuizState.PLAYING);
         return;
     }
 
-    // Get Questions based on scope (Quarter, Week, Unit)
     let filteredQuestions = getFilteredQuestions(scope);
 
-    // Shuffle logic common for most games
-    // Fisher-Yates Shuffle
     for (let i = filteredQuestions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [filteredQuestions[i], filteredQuestions[j]] = [filteredQuestions[j], filteredQuestions[i]];
@@ -221,7 +212,6 @@ const App: React.FC = () => {
       setGameState(QuizState.LANDING);
   }
 
-  // Dashboard Handler
   const handleDashboardAssignment = (mode: GameMode, subject: SubjectId) => {
       if (subject !== activeSubject) {
           setActiveSubject(subject);
@@ -294,6 +284,8 @@ const App: React.FC = () => {
       if (gameMode === 'wheel') return <WheelFortuneGame questions={gameQuestions} onExit={handleHomeClick} />;
       if (gameMode === 'millionaire') return <MillionaireGame questions={gameQuestions} onExit={handleHomeClick} />;
       if (gameMode === 'analysis') return <AnalysisGame onExit={handleHomeClick} />;
+      if (gameMode === 'classroyale') return <ClassRoyaleGame questions={gameQuestions} onExit={handleHomeClick} />;
+      if (gameMode === 'studysnake') return <StudySnakeGame questions={gameQuestions} onExit={handleHomeClick} />;
 
 
       if (gameQuestions.length === 0) return <div className="text-center p-8">Loading...</div>;
@@ -323,12 +315,10 @@ const App: React.FC = () => {
     }
   };
 
-  // Determine if we should show the fancy nav (hide in immersive games)
-  const isImmersiveMode = gameState === QuizState.MULTIPLAYER || gameMode === 'boss' || gameMode === 'towerdefense' || gameMode === 'millionaire' || gameMode === 'wheel' || gameMode === 'analysis' || gameMode === 'connect4' || gameMode === 'battleship' || gameMode === 'risk';
+  const isImmersiveMode = gameState === QuizState.MULTIPLAYER || gameMode === 'boss' || gameMode === 'towerdefense' || gameMode === 'millionaire' || gameMode === 'wheel' || gameMode === 'analysis' || gameMode === 'connect4' || gameMode === 'battleship' || gameMode === 'risk' || gameMode === 'classroyale' || gameMode === 'studysnake';
 
   return (
     <div className="min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Floating Navigation Bar */}
       {!isImmersiveMode && (
       <nav className="fixed top-4 left-0 right-0 mx-auto max-w-7xl w-[95%] z-50 transition-all duration-300">
         <div className="bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl shadow-indigo-500/10 rounded-2xl px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -385,7 +375,6 @@ const App: React.FC = () => {
       </nav>
       )}
 
-      {/* For Immersive mode, we might want a small corner exit if it's the Teacher Dashboard */}
       {isImmersiveMode && gameState === QuizState.TEACHER_DASHBOARD && (
           <div className="fixed top-4 right-4 z-50">
               <button onClick={handleLogout} className="bg-white/10 hover:bg-red-500 text-white p-2 rounded-lg backdrop-blur-sm transition-all shadow-lg flex items-center gap-2 text-sm font-bold">

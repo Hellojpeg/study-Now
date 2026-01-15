@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Question, TDEnemy, TDTower, TowerType } from '../types';
 import { ArrowLeft, Shield, Zap, Coins, Heart, Play, AlertTriangle, BookOpen, Skull, Swords, Maximize, Target, Activity, Lock, Unlock, Hammer } from 'lucide-react';
@@ -83,8 +82,9 @@ const TowerDefenseGame: React.FC<TowerDefenseGameProps> = ({ questions, onExit }
   const [triviaReason, setTriviaReason] = useState<'GOLD' | 'KNOWLEDGE' | 'REVIVE'>('KNOWLEDGE');
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
 
-  const requestRef = useRef<number>();
-  const lastTimeRef = useRef<number>();
+  // Added initial values for useRef to fix "Expected 1 arguments, but got 0"
+  const requestRef = useRef<number | undefined>(undefined);
+  const lastTimeRef = useRef<number | undefined>(undefined);
   const lastUpkeepTickRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -163,8 +163,10 @@ const TowerDefenseGame: React.FC<TowerDefenseGameProps> = ({ questions, onExit }
             return next;
         });
 
-        if (lives <= 0 && phase !== 'REVIVE') {
+        // Fixed redundant type comparison warning: narrowing phase to 'WAVE' makes phase !== 'REVIVE' redundant
+        if (lives <= 0) {
             setPhase('REVIVE');
+            setIsPlaying(false);
             openTrivia('REVIVE');
         }
 

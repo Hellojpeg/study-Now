@@ -40,7 +40,7 @@ export interface QuizData {
   questions: Question[];
 }
 
-export type GameMode = 'standard' | 'speed' | 'matching' | 'flashcards' | 'jeopardy' | 'wordle' | 'textbook' | 'outline' | 'modules' | 'boss' | 'commerce' | 'tictactoe' | 'hangman' | 'guesswho' | 'guesswhat' | 'towerdefense' | 'wheel' | 'millionaire' | 'analysis' | 'connect4' | 'battleship' | 'risk' | 'checkers';
+export type GameMode = 'standard' | 'speed' | 'matching' | 'flashcards' | 'jeopardy' | 'wordle' | 'textbook' | 'outline' | 'modules' | 'boss' | 'commerce' | 'tictactoe' | 'hangman' | 'guesswho' | 'guesswhat' | 'towerdefense' | 'wheel' | 'millionaire' | 'analysis' | 'connect4' | 'battleship' | 'risk' | 'checkers' | 'classroyale' | 'studysnake';
 
 export interface MatchingCard {
   id: string;
@@ -50,6 +50,51 @@ export interface MatchingCard {
   isMatched: boolean;
   pairId: number;
   iconName?: string;
+}
+
+// --- Study Snake Types ---
+
+export interface SnakePoint {
+    x: number;
+    y: number;
+}
+
+export interface SnakeEnemy {
+    id: string;
+    pos: SnakePoint;
+    hp: number;
+    type: 'GHOST' | 'SPIDER';
+}
+
+export interface SnakeProjectile {
+    id: string;
+    pos: SnakePoint;
+    dir: SnakePoint;
+    type: 'LASER' | 'ARROW' | 'POISON';
+}
+
+// --- Class Royale Types ---
+
+export interface RoyaleCard {
+    id: string;
+    name: string;
+    cost: number;
+    hp: number;
+    maxHp: number;
+    dmg: number;
+    range: number;
+    type: 'UNIT' | 'SPELL';
+    icon: string;
+    description: string;
+    evolutionAvailable?: boolean;
+}
+
+export interface RoyaleUnitInstance extends RoyaleCard {
+    instanceId: string;
+    owner: 'PLAYER' | 'CPU';
+    lane: number;
+    position: number; // 0 to 100 (0 is player tower, 100 is CPU tower)
+    isEvolved?: boolean;
 }
 
 // --- Analysis / Higher Order Types ---

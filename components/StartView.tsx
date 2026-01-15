@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, History, Clock, BrainCircuit, Landmark, Flag, Zap, Layers, Copy, GraduationCap, LayoutGrid, Type, Book, List, Library, Calendar, Sword, Coins, Hash, Lock, Search, Shield, RotateCw, DollarSign, PenTool, Map, Grid3X3, Crosshair, Circle } from 'lucide-react';
+import { BookOpen, History, Clock, BrainCircuit, Landmark, Flag, Zap, Layers, Copy, GraduationCap, LayoutGrid, Type, Book, List, Library, Calendar, Sword, Coins, Hash, Lock, Search, Shield, RotateCw, DollarSign, PenTool, Map, Grid3X3, Crosshair, Circle, Swords, MousePointer2 } from 'lucide-react';
 import { SubjectId, GameMode } from '../types';
 import { QUIZZES } from '../constants';
 
@@ -161,31 +161,30 @@ const StartView: React.FC<StartViewProps> = ({
                   <p className="text-slate-500 text-sm font-medium">Classic multiple choice.</p>
               </button>
               
-              {/* Speed */}
+              {/* Class Royale */}
               <button 
-                onClick={() => handleStartGame('speed')} 
+                onClick={() => handleStartGame('classroyale')} 
                 disabled={!selectedScope}
-                className={getButtonClass("group bg-slate-900 rounded-3xl p-6 shadow-2xl hover:shadow-indigo-500/20 transition-all hover:-translate-y-1 text-left flex flex-col h-full min-h-[160px] relative overflow-hidden")}
+                className={getButtonClass("group bg-slate-900 rounded-3xl p-6 shadow-2xl hover:shadow-indigo-500/20 transition-all hover:-translate-y-1 text-left flex flex-col h-full min-h-[160px] relative overflow-hidden ring-4 ring-blue-500/20")}
               >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500 blur-[60px] opacity-20 rounded-full pointer-events-none"></div>
-                  <div className="bg-indigo-500/20 w-14 h-14 rounded-2xl flex items-center justify-center text-indigo-400 mb-4 group-hover:scale-110 transition-transform border border-indigo-500/30">
-                      <Zap className="w-7 h-7" />
+                  <div className="bg-blue-500 w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                      <Swords className="w-7 h-7" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-1">Speed Run</h3>
-                  <p className="text-slate-400 text-sm font-medium">10s timer. High stakes.</p>
+                  <h3 className="text-xl font-bold text-white mb-1">Class Royale</h3>
+                  <p className="text-blue-300 text-sm font-bold">New Mode: Card Combat</p>
               </button>
 
-              {/* Jeopardy */}
+              {/* Study Snake */}
               <button 
-                onClick={() => handleStartGame('jeopardy')} 
+                onClick={() => handleStartGame('studysnake')} 
                 disabled={!selectedScope}
-                className={getButtonClass("group bg-white rounded-3xl p-6 border border-slate-100 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-left flex flex-col h-full min-h-[160px] relative overflow-hidden")}
+                className={getButtonClass("group bg-emerald-600 rounded-3xl p-6 shadow-2xl hover:shadow-emerald-500/20 transition-all hover:-translate-y-1 text-left flex flex-col h-full min-h-[160px] relative overflow-hidden ring-4 ring-emerald-500/20")}
               >
-                  <div className="bg-amber-50 w-14 h-14 rounded-2xl flex items-center justify-center text-amber-600 mb-4 group-hover:scale-110 transition-transform">
-                      <LayoutGrid className="w-7 h-7" />
+                  <div className="bg-white/10 w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                      <MousePointer2 className="w-7 h-7" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-1">Jeopardy</h3>
-                  <p className="text-slate-500 text-sm font-medium">Board game style.</p>
+                  <h3 className="text-xl font-bold text-white mb-1">Study Snake</h3>
+                  <p className="text-emerald-100 text-sm font-bold animate-pulse">New Mode: Arcade Prep</p>
               </button>
           </div>
       </div>
@@ -196,6 +195,8 @@ const StartView: React.FC<StartViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                {/* Tile Component Helper */}
                {[
+                 { id: 'jeopardy', icon: LayoutGrid, color: 'text-amber-500', bg: 'bg-amber-50', title: 'Jeopardy', desc: 'Board Game' },
+                 { id: 'speed', icon: Zap, color: 'text-indigo-500', bg: 'bg-indigo-50', title: 'Speed Run', desc: '10s Timer' },
                  { id: 'boss', icon: Sword, color: 'text-red-500', bg: 'bg-red-50', title: 'Boss Battle', desc: 'RPG Strategy' },
                  { id: 'commerce', icon: Coins, color: 'text-emerald-500', bg: 'bg-emerald-50', title: 'Tycoon', desc: 'Economy Sim' },
                  { id: 'towerdefense', icon: Shield, color: 'text-orange-500', bg: 'bg-orange-50', title: 'Tower Defense', desc: 'Defend & Build' },
