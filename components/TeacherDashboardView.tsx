@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
-import { MOCK_CLASSES } from '../constants';
-import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X, Calculator } from 'lucide-react';
+import { useQuery, useMutation } from 'convex/react';
+import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X, Calculator, Edit3, Package } from 'lucide-react';
+import ScormManager from './ScormManager';
+import ScormPlayer from './ScormPlayer';
 
 interface TeacherDashboardViewProps {
   user: User;
@@ -28,7 +30,7 @@ interface QuizDraft {
 
 const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'CLASSES' | 'STUDENTS' | 'ASSESSMENTS' | 'SETTINGS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'CLASSES' | 'STUDENTS' | 'ASSESSMENTS' | 'SCORM' | 'SETTINGS'>('DASHBOARD');
   
   // Quiz Creator State
   const [quizStep, setQuizStep] = useState<'LIST' | 'SOURCE' | 'EDITOR'>('LIST');
@@ -88,6 +90,72 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
   const removeManualQuestion = (index: number) => {
       const updated = quizDraft.manualQuestions.filter((_, i) => i !== index);
       setQuizDraft(prev => ({ ...prev, manualQuestions: updated }));
+  };
+
+  // Convex data & roster management
+  const classesList = useQuery("functions/classes:listClassesForTeacher", { teacherId: user.id }) || [];
+  const createClass = useMutation("functions/classes:createClass");
+  const updateClass = useMutation("functions/classes:updateClass");
+  const deleteClassMutation = useMutation("functions/classes:deleteClass");
+  const addStudentToClass = useMutation("functions/classes:addStudentToClass");
+  const removeStudentFromClass = useMutation("functions/classes:removeStudentFromClass");
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [addEmail, setAddEmail] = useState("");
+  const [editingClass, setEditingClass] = useState<any>(null);
+  const [scormPackage, setScormPackage] = useState<{id: string; url: string} | null>(null);
+  const lookupUser = useQuery("functions/users:getUserByEmail", { email: addEmail || '' });
+  const rosterUsers = useQuery("functions/classes:getStudentsForClass", { classId: selectedClassId || '' }) || [];
+
+  const handleAddClass = async () => {
+    const name = prompt('Class name'); if (!name) return;
+    const section = prompt('Section', 'Period 1') || '';
+    const code = prompt('Code', `C-${Math.random().toString(36).slice(2,7).toUpperCase()}`) || '';
+    await createClass({ name, section, code, teacherId: user.id });
+  };
+
+  const handleEditClass = async () => {
+    if (!editingClass) return;
+    try {
+      await updateClass({
+        classId: editingClass._id,
+        name: editingClass.name,
+        section: editingClass.section,
+        code: editingClass.code,
+      });
+      setEditingClass(null);
+    } catch (err) {
+      console.error('Failed to update class:', err);
+      alert('Failed to update class');
+    }
+  };
+
+  const handleDeleteClass = async (classId: string, className: string) => {
+    if (!confirm(`Are you sure you want to delete "${className}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteClassMutation({ classId });
+    } catch (err) {
+      console.error('Failed to delete class:', err);
+      alert('Failed to delete class');
+    }
+  };
+
+  const openRoster = (classId: string) => {
+    setSelectedClassId(classId);
+  };
+
+  const handleAddStudent = async () => {
+    if (!selectedClassId) return;
+    if (!lookupUser) { alert('No user found with that email'); return; }
+    const sid = (lookupUser as any)._id || (lookupUser as any).id;
+    await addStudentToClass({ classId: selectedClassId, studentId: sid });
+    setAddEmail('');
+  };
+
+  const handleRemoveStudent = async (studentId: string) => {
+    if (!selectedClassId) return;
+    await removeStudentFromClass({ classId: selectedClassId, studentId });
   };
 
   const NavItem = ({ icon: Icon, label, tab }: { icon: any, label: string, tab: typeof activeTab }) => (
@@ -225,6 +293,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
              <NavItem icon={BookOpen} label="Classes" tab="CLASSES" />
              <NavItem icon={Users} label="Students" tab="STUDENTS" />
              <NavItem icon={FileText} label="Assessments" tab="ASSESSMENTS" />
+             <NavItem icon={Package} label="SCORM Import" tab="SCORM" />
              
              <div className={`px-3 mt-8 mb-2 text-xs font-bold text-slate-500 uppercase tracking-wider ${!isSidebarOpen ? 'text-center' : ''}`}>
                  {isSidebarOpen ? 'System' : 'Sys'}
@@ -260,12 +329,14 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight">
                         {activeTab === 'ASSESSMENTS' && quizStep !== 'LIST' ? 'Quiz Creator' : 
+                         activeTab === 'SCORM' ? 'SCORM Import' :
                          activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}
                     </h1>
                     <p className="text-slate-500 font-medium">
                         {activeTab === 'DASHBOARD' && "Overview of your classroom performance."}
                         {activeTab === 'CLASSES' && "Manage your active sections and rosters."}
                         {activeTab === 'ASSESSMENTS' && "Create and assign quizzes to students."}
+                        {activeTab === 'SCORM' && "Import and manage SCORM course packages."}
                     </p>
                 </div>
                 {activeTab === 'DASHBOARD' && (
@@ -306,13 +377,13 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
                             <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><BookOpen className="w-5 h-5 text-indigo-500"/> Active Classes</h2>
                             <div className="space-y-4">
-                                {MOCK_CLASSES.map(cls => (
-                                    <div key={cls.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-indigo-200 transition-all group">
+                                {classesList.map((cls: any) => (
+                                    <div key={cls._id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-indigo-200 transition-all group">
                                         <div>
                                             <div className="font-bold text-slate-800">{cls.name}</div>
-                                            <div className="text-xs text-slate-500 font-mono mt-1">{cls.section} • {cls.studentCount} Students</div>
+                                            <div className="text-xs text-slate-500 font-mono mt-1">{cls.section} • {(cls.studentIds || []).length} Students</div>
                                         </div>
-                                        <button className="text-slate-400 group-hover:text-indigo-600"><ChevronRight className="w-5 h-5" /></button>
+                                        <button onClick={() => openRoster(cls._id)} className="text-slate-400 group-hover:text-indigo-600"><ChevronRight className="w-5 h-5" /></button>
                                     </div>
                                 ))}
                             </div>
@@ -339,30 +410,131 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
             {/* CLASSES VIEW */}
             {activeTab === 'CLASSES' && (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-                    {MOCK_CLASSES.map(cls => (
-                        <div key={cls.id} className="bg-white p-6 rounded-3xl border border-slate-200 hover:shadow-xl hover:border-indigo-200 transition-all group cursor-pointer">
-                            <div className="flex justify-between items-start mb-4">
-                                <span className="bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-lg text-xs uppercase tracking-wider">{cls.section}</span>
-                                <MoreVertical className="w-5 h-5 text-slate-300" />
-                            </div>
-                            <h3 className="text-xl font-black text-slate-900 mb-1">{cls.name}</h3>
-                            <div className="text-sm font-mono text-slate-500 mb-6 bg-slate-50 inline-block px-2 py-1 rounded">Code: {cls.code}</div>
-                            
-                            <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                <div className="flex -space-x-2">
-                                    {[1,2,3].map(i => <div key={i} className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white"></div>)}
-                                    <div className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">+{cls.studentCount - 3}</div>
-                                </div>
-                                <div className="text-xs font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">View Class →</div>
-                            </div>
+                    {classesList.map((cls: any) => (
+                      <div key={cls._id} className="bg-white p-6 rounded-3xl border border-slate-200 hover:shadow-xl hover:border-indigo-200 transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                          <span className="bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-lg text-xs uppercase tracking-wider">{cls.section}</span>
+                          <div className="flex gap-1">
+                            <button 
+                              onClick={() => setEditingClass({...cls})} 
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Edit class"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteClass(cls._id, cls.name)} 
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete class"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
+                        <h3 className="text-xl font-black text-slate-900 mb-1">{cls.name}</h3>
+                        <div className="text-sm font-mono text-slate-500 mb-6 bg-slate-50 inline-block px-2 py-1 rounded">Code: {cls.code}</div>
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                          <div className="flex -space-x-2">
+                            {[1,2,3].map(i => <div key={i} className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white"></div>)}
+                            <div className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">+{Math.max(0, (cls.studentIds || []).length - 3)}</div>
+                          </div>
+                          <div className="text-xs font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">
+                            <button onClick={() => openRoster(cls._id)} className="font-bold">Manage Roster →</button>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                    <button className="border-2 border-dashed border-slate-300 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all min-h-[200px]">
-                        <Plus className="w-8 h-8 mb-2" />
-                        <span className="font-bold">Add New Class</span>
+                    <button onClick={handleAddClass} className="border-2 border-dashed border-slate-300 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all min-h-[200px]">
+                      <Plus className="w-8 h-8 mb-2" />
+                      <span className="font-bold">Add New Class</span>
                     </button>
-                </div>
+                  </div>
             )}
+
+            {/* Edit Class Modal */}
+            {editingClass && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+                <div className="absolute inset-0 bg-black/40" onClick={() => setEditingClass(null)} />
+                <div className="bg-white rounded-2xl p-6 z-50 w-full max-w-md shadow-2xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold">Edit Class</h3>
+                    <button onClick={() => setEditingClass(null)} className="text-slate-400 hover:text-slate-600">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Class Name</label>
+                      <input
+                        value={editingClass.name}
+                        onChange={(e) => setEditingClass({...editingClass, name: e.target.value})}
+                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Section</label>
+                      <input
+                        value={editingClass.section}
+                        onChange={(e) => setEditingClass({...editingClass, section: e.target.value})}
+                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Code</label>
+                      <input
+                        value={editingClass.code}
+                        onChange={(e) => setEditingClass({...editingClass, code: e.target.value})}
+                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => setEditingClass(null)}
+                      className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleEditClass}
+                      className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedClassId && (
+  <div className="fixed inset-0 z-40 flex items-center justify-center p-6">
+    <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedClassId(null)} />
+    <div className="bg-white rounded-2xl p-6 z-50 w-full max-w-2xl shadow-2xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold">Roster</h3>
+        <button onClick={() => setSelectedClassId(null)} className="text-slate-500">Close</button>
+      </div>
+      <div className="mb-4">
+        <div className="flex gap-2">
+          <input value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="student@example.edu" className="flex-1 p-3 border rounded-lg" />
+          <button onClick={handleAddStudent} className="bg-indigo-600 text-white px-4 py-2 rounded-lg">Add</button>
+        </div>
+      </div>
+      <div className="space-y-3 max-h-64 overflow-auto">
+        {rosterUsers.length === 0 && <div className="text-sm text-slate-500">No students in this class yet.</div>}
+        {rosterUsers.map((s: any) => (
+          <div key={(s as any)._id || s.id} className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <div className="font-bold">{s.name}</div>
+              <div className="text-xs text-slate-500">{s.email}</div>
+            </div>
+            <button onClick={() => handleRemoveStudent((s as any)._id || s.id)} className="text-red-500">Remove</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
             {/* ASSESSMENTS VIEW */}
             {activeTab === 'ASSESSMENTS' && (
@@ -649,6 +821,27 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                     <h2 className="text-xl font-bold text-slate-600">Student Roster</h2>
                     <p>Select a class to view detailed student analytics.</p>
                 </div>
+            )}
+
+            {/* SCORM Import View */}
+            {activeTab === 'SCORM' && (
+                <div className="animate-fadeIn">
+                    <ScormManager 
+                      teacherId={user.id} 
+                      onLaunchPackage={(id, url) => setScormPackage({ id, url })}
+                    />
+                </div>
+            )}
+
+            {/* SCORM Player Modal */}
+            {scormPackage && (
+                <ScormPlayer
+                    packageId={scormPackage.id}
+                    manifestUrl={scormPackage.url}
+                    studentId={user.id}
+                    studentName={user.name}
+                    onClose={() => setScormPackage(null)}
+                />
             )}
 
             {activeTab === 'SETTINGS' && (

@@ -9,6 +9,8 @@
  */
 
 import type * as functions_auth from "../functions/auth.js";
+import type * as functions_classes from "../functions/classes.js";
+import type * as functions_scorm from "../functions/scorm.js";
 import type * as functions_seed from "../functions/seed.js";
 import type * as functions_users from "../functions/users.js";
 
@@ -20,6 +22,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "functions/auth": typeof functions_auth;
+  "functions/classes": typeof functions_classes;
+  "functions/scorm": typeof functions_scorm;
   "functions/seed": typeof functions_seed;
   "functions/users": typeof functions_users;
 }>;
