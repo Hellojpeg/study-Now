@@ -88,8 +88,9 @@ const StartView: React.FC<StartViewProps> = ({
             >
                 <option value="" disabled>Select a Unit or Exam Section...</option>
                 
-                <optgroup label="Core Midterm Prep">
-                    <option value="MID">World History Midterm (Cumulative)</option>
+                <optgroup label="Exam Review Prep">
+                    <option value="MID">Midterm (Q1/Q2 Review)</option>
+                    <option value="FIN">EOC Final Exam Practice (Cumulative)</option>
                     <option value="ALL">Complete Question Bank</option>
                 </optgroup>
 

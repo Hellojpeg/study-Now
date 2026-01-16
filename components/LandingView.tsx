@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Landmark, Flag, History, ArrowRight, Stars } from 'lucide-react';
-import { SubjectId } from '../types';
+import { SubjectId, QuizData } from '../types';
 import { QUIZZES } from '../constants';
 
 interface LandingViewProps {
@@ -44,7 +44,8 @@ const LandingView: React.FC<LandingViewProps> = ({ onSelectSubject }) => {
 
       {/* Cards Grid - 3 columns for core subjects */}
       <div className="grid md:grid-cols-3 gap-6 w-full max-w-6xl">
-        {Object.values(QUIZZES).map((quiz) => (
+        {/* Explicitly cast values to QuizData[] to fix "Property 'id' does not exist on type 'unknown'" and related errors */}
+        {(Object.values(QUIZZES) as QuizData[]).map((quiz) => (
           <button
             key={quiz.id}
             onClick={() => onSelectSubject(quiz.id as SubjectId)}
