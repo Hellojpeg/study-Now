@@ -38,7 +38,7 @@
     "start": "node server.js",
     "server": "node server.js",
     "check": "tsc --noEmit",
-    "postinstall": "node scripts/fix_convex_tsconfig.js || true; if [ -f \"node_modules/.bin/vite\" ]; then npm run build; else echo \"vite not found, skipping build\"; fi"
+    "postinstall": "node scripts/fix_convex_tsconfig.cjs || true; if [ -f \"node_modules/.bin/vite\" ]; then npm run build; else echo \"vite not found, skipping build\"; fi"
   },
   "browserslist": {
     "production": [
