@@ -16,6 +16,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
 
   const signIn = useAction(api.functions.auth.signIn);
   const signUp = useAction(api.functions.auth.signUp);
@@ -28,16 +29,17 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
     setLoading(true);
 
     try {
+      const storage = rememberMe ? localStorage : sessionStorage;
       if (mode === 'SIGNUP') {
         const user = await signUp({ name, email, password, role });
         if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
+          storage.setItem('user', JSON.stringify(user));
           onLogin(user);
         }
       } else {
         const user = await signIn({ email, password });
         if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
+          storage.setItem('user', JSON.stringify(user));
           onLogin(user);
         }
       }
@@ -157,6 +159,19 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                                <GraduationCap className="w-5 h-5" /> Teacher
                            </button>
                        </div>
+                   </div>
+
+                   <div className="flex items-center gap-2 pt-2">
+                     <input
+                       type="checkbox"
+                       id="rememberMe"
+                       checked={rememberMe}
+                       onChange={(e) => setRememberMe(e.target.checked)}
+                       className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                     />
+                     <label htmlFor="rememberMe" className="text-sm text-slate-600 font-medium">
+                       Remember me next time
+                     </label>
                    </div>
 
                    <button disabled={loading} type="submit" className="w-full bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-1 mt-6 flex items-center justify-center gap-2">

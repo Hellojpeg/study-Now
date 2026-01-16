@@ -47,10 +47,12 @@ const App: React.FC = () => {
   // Auth State - Bypassed: Default to guest user so everyone can use the app
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState<User | null>(() => {
-    // First check localStorage for existing user
+    // First check localStorage, then sessionStorage for existing user
     try {
-      const raw = localStorage.getItem('user');
-      if (raw) return JSON.parse(raw);
+      const local = localStorage.getItem('user');
+      if (local) return JSON.parse(local);
+      const session = sessionStorage.getItem('user');
+      if (session) return JSON.parse(session);
     } catch (e) {
       // ignore
     }
