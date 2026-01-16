@@ -43,9 +43,24 @@ const App: React.FC = () => {
   
   const [gameQuestions, setGameQuestions] = useState<Question[]>([]);
   
-  // Auth State
+  // Auth State - Bypassed: Default to guest user so everyone can use the app
   const [showAuth, setShowAuth] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    // First check localStorage for existing user
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      // ignore
+    }
+    // Default guest user - auth bypassed for now
+    return {
+      id: 'guest',
+      name: 'Guest',
+      email: 'guest@example.com',
+      role: 'STUDENT' as const,
+    };
+  });
 
   const currentQuiz = QUIZZES[activeSubject];
 
@@ -209,6 +224,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
       setUser(null);
+      localStorage.removeItem('user');
       setGameState(QuizState.LANDING);
   }
 

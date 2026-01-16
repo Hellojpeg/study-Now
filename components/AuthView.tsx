@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { UserRole, User } from '../types';
 import { BookOpen, UserCircle, GraduationCap, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useAction } from 'convex/react';
 
 interface AuthViewProps {
   onLogin: (user: User) => void;
@@ -15,49 +16,36 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const signIn = useAction("functions/auth:signIn");
+  const signUp = useAction("functions/auth:signUp");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // --- TEACHER SECURITY CHECK ---
-    // Credentials obfuscated (Base64) to prevent plain text visibility
-    // Target: jpgomezmedia@gmail.com / Cathalina1
-    const T_HASH_E = "anBnb21lem1lZGlhQGdtYWlsLmNvbQ=="; 
-    const T_HASH_P = "Q2F0aGFsaW5hMQ==";
+    setErrorMsg('');
+    setLoading(true);
 
-    if (role === 'TEACHER') {
-        if (mode === 'SIGNUP') {
-            alert("New Teacher registration is restricted. Please contact the administrator.");
-            return;
+    try {
+      if (mode === 'SIGNUP') {
+        const user = await signUp({ name, email, password, role });
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+          onLogin(user);
         }
-
-        try {
-            // Verify against encoded values
-            if (btoa(email) === T_HASH_E && btoa(password) === T_HASH_P) {
-                const user: User = {
-                    id: 'teacher-gomez',
-                    name: 'Mr. Gomez',
-                    email: email,
-                    role: 'TEACHER'
-                };
-                onLogin(user);
-            } else {
-                alert("Invalid Credentials for Teacher Access");
-            }
-        } catch (e) {
-            console.error("Auth Error");
-            alert("Authentication failed.");
+      } else {
+        const user = await signIn({ email, password });
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+          onLogin(user);
         }
-        return;
+      }
+    } catch (err: any) {
+      console.error('Auth error', err);
+      setErrorMsg(err?.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
     }
-
-    // --- STUDENT SIMULATION ---
-    const user: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: mode === 'LOGIN' ? 'Student' : name,
-        email,
-        role: 'STUDENT'
-    };
-    onLogin(user);
   };
 
   return (
@@ -109,6 +97,9 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                </div>
 
                <form onSubmit={handleSubmit} className="space-y-4">
+                   {errorMsg && (
+                     <div className="text-red-600 text-sm font-bold p-2 bg-red-50 rounded-md">{errorMsg}</div>
+                   )}
                    {mode === 'SIGNUP' && (
                        <div>
                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Full Name</label>
@@ -167,8 +158,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                        </div>
                    </div>
 
-                   <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-1 mt-6 flex items-center justify-center gap-2">
-                       {mode === 'LOGIN' ? 'Sign In' : 'Create Account'} <ArrowRight className="w-4 h-4" />
+                   <button disabled={loading} type="submit" className="w-full bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-1 mt-6 flex items-center justify-center gap-2">
+                       {loading ? (mode === 'LOGIN' ? 'Signing in...' : 'Creating...') : (mode === 'LOGIN' ? 'Sign In' : 'Create Account')} <ArrowRight className="w-4 h-4" />
                    </button>
                </form>
            </div>

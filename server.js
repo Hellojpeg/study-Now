@@ -1,10 +1,16 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
 app.use(cors());
+
+// Serve static files from dist in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'dist')));
+}
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -73,7 +79,14 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 3001;
+// SPA fallback for production - serve index.html for all non-API routes
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
+}
+
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`SERVER RUNNING on port ${PORT}`);
 });

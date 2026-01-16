@@ -2,23 +2,35 @@
   "name": "midterm-prep-assistant",
   "version": "1.0.0",
   "description": "A rapid-fire study application for World History, Civics, and US History Midterms.",
+  "type": "module",
   "main": "index.tsx",
   "dependencies": {
+    "@google/genai": "^1.37.0",
+    "canvas-confetti": "^1.9.2",
+    "convex": "^1.31.4",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "lucide-react": "^0.556.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
-    "lucide-react": "^0.556.0",
-    "canvas-confetti": "^1.9.2",
-    "express": "^4.18.2",
     "socket.io": "^4.7.2",
-    "socket.io-client": "^4.7.2",
-    "cors": "^2.8.5"
+    "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.8",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.7"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
     "server": "node server.js",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "check": "tsc --noEmit"
   },
   "browserslist": {
     "production": [
