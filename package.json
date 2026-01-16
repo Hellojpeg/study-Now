@@ -4,6 +4,10 @@
   "description": "A rapid-fire study application for World History, Civics, and US History Midterms.",
   "type": "module",
   "main": "index.tsx",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11"
+  },
   "dependencies": {
     "@google/genai": "^1.37.0",
     "canvas-confetti": "^1.9.2",
@@ -30,7 +34,8 @@
     "preview": "vite preview",
     "start": "node server.js",
     "server": "node server.js",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "postinstall": "if [ -f \"node_modules/.bin/vite\" ]; then npm run build; else echo \"vite not found, skipping build\"; fi"
   },
   "browserslist": {
     "production": [

@@ -79,6 +79,11 @@ io.on('connection', (socket) => {
   });
 });
 
+// Health check endpoint for hosting providers
+app.get('/health', (req, res) => {
+  res.json({ ok: true });
+});
+
 // SPA fallback for production - serve index.html for all non-API routes
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
