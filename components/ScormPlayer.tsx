@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMutation, useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { X, Loader2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 
 interface ScormPlayerProps {
@@ -66,11 +67,11 @@ const ScormPlayer: React.FC<ScormPlayerProps> = ({
   const sessionStartTime = useRef(Date.now());
   
   // Convex mutations/queries
-  const existingAttempt = useQuery("functions/scorm:getAttemptForPackageStudent" as any, { 
+  const existingAttempt = useQuery(api.functions.scorm.getAttemptForPackageStudent, { 
     packageId, 
     studentId 
   });
-  const saveAttempt = useMutation("functions/scorm:createOrUpdateAttempt" as any);
+  const saveAttempt = useMutation(api.functions.scorm.createOrUpdateAttempt);
 
   // CMI data state (SCORM 1.2 data model)
   const cmiDataRef = useRef<CmiData>({

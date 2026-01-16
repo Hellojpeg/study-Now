@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { UserRole, User } from '../types';
 import { BookOpen, UserCircle, GraduationCap, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useAction } from 'convex/react';
+import { api } from '../convex/_generated/api';
 
 interface AuthViewProps {
   onLogin: (user: User) => void;
@@ -16,8 +17,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
 
-  const signIn = useAction("functions/auth:signIn");
-  const signUp = useAction("functions/auth:signUp");
+  const signIn = useAction(api.functions.auth.signIn);
+  const signUp = useAction(api.functions.auth.signUp);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 

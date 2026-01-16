@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { 
   Upload, Package, Trash2, Users, Eye, Plus, X, 
   CheckCircle, AlertCircle, Loader2, BarChart2, 
@@ -36,15 +37,15 @@ const ScormManager: React.FC<ScormManagerProps> = ({ teacherId, onLaunchPackage 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Convex data
-  const packages = useQuery("functions/scorm:listPackagesForTeacher" as any, { teacherId }) || [];
-  const classes = useQuery("functions/classes:listClassesForTeacher" as any, { teacherId }) || [];
-  const createPackage = useMutation("functions/scorm:createPackage" as any);
-  const updatePackage = useMutation("functions/scorm:updatePackage" as any);
-  const deletePackageMutation = useMutation("functions/scorm:deletePackage" as any);
+  const packages = useQuery(api.functions.scorm.listPackagesForTeacher, { teacherId }) || [];
+  const classes = useQuery(api.functions.classes.listClassesForTeacher, { teacherId }) || [];
+  const createPackage = useMutation(api.functions.scorm.createPackage);
+  const updatePackage = useMutation(api.functions.scorm.updatePackage);
+  const deletePackageMutation = useMutation(api.functions.scorm.deletePackage);
 
   // Get report for selected package
   const packageReport = useQuery(
-    "functions/scorm:getPackageReport" as any,
+    api.functions.scorm.getPackageReport,
     selectedPackage ? { packageId: selectedPackage } : "skip"
   );
 

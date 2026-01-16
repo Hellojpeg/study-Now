@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X, Calculator, Edit3, Package } from 'lucide-react';
 import ScormManager from './ScormManager';
 import ScormPlayer from './ScormPlayer';
@@ -93,18 +94,18 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
   };
 
   // Convex data & roster management
-  const classesList = useQuery("functions/classes:listClassesForTeacher", { teacherId: user.id }) || [];
-  const createClass = useMutation("functions/classes:createClass");
-  const updateClass = useMutation("functions/classes:updateClass");
-  const deleteClassMutation = useMutation("functions/classes:deleteClass");
-  const addStudentToClass = useMutation("functions/classes:addStudentToClass");
-  const removeStudentFromClass = useMutation("functions/classes:removeStudentFromClass");
+  const classesList = useQuery(api.functions.classes.listClassesForTeacher, { teacherId: user.id }) || [];
+  const createClass = useMutation(api.functions.classes.createClass);
+  const updateClass = useMutation(api.functions.classes.updateClass);
+  const deleteClassMutation = useMutation(api.functions.classes.deleteClass);
+  const addStudentToClass = useMutation(api.functions.classes.addStudentToClass);
+  const removeStudentFromClass = useMutation(api.functions.classes.removeStudentFromClass);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [addEmail, setAddEmail] = useState("");
   const [editingClass, setEditingClass] = useState<any>(null);
   const [scormPackage, setScormPackage] = useState<{id: string; url: string} | null>(null);
-  const lookupUser = useQuery("functions/users:getUserByEmail", { email: addEmail || '' });
-  const rosterUsers = useQuery("functions/classes:getStudentsForClass", { classId: selectedClassId || '' }) || [];
+  const lookupUser = useQuery(api.functions.users.getUserByEmail, { email: addEmail || '' });
+  const rosterUsers = useQuery(api.functions.classes.getStudentsForClass, { classId: selectedClassId || '' }) || [];
 
   const handleAddClass = async () => {
     const name = prompt('Class name'); if (!name) return;

@@ -35,7 +35,7 @@ export const getStudentsForClass = query({
   args: { classId: v.string() },
   handler: async (ctx, { classId }) => {
     if (!classId) return [];
-    const cls = await ctx.db.get(classId as any);
+    const cls = await ctx.db.query("classes").filter((q) => q.eq(q.field("_id"), classId as any)).first();
     if (!cls) return [];
     const ids = cls.studentIds || [];
     const users = await Promise.all(ids.map((id: string) => ctx.db.get(id as any)));
@@ -102,14 +102,14 @@ export const deleteClass = mutation({
 export const addStudentToClass = mutation({
   args: { classId: v.string(), studentId: v.string() },
   handler: async (ctx, { classId, studentId }) => {
-    const cls = await ctx.db.get(classId as any);
+    const cls = await ctx.db.query("classes").filter((q) => q.eq(q.field("_id"), classId as any)).first();
     if (!cls) throw new Error("Class not found");
     const existingIds = Array.isArray(cls.studentIds) ? cls.studentIds : [];
     if (existingIds.includes(studentId)) {
       return { id: classId, studentIds: existingIds }; // Already in class
     }
     const newStudents = [...existingIds, studentId];
-    await ctx.db.patch(classId as any, { studentIds: newStudents, updatedAt: Date.now() });
+    await ctx.db.patch(cls._id, { studentIds: newStudents, updatedAt: Date.now() });
     return { id: classId, studentIds: newStudents };
   },
 });
@@ -117,10 +117,10 @@ export const addStudentToClass = mutation({
 export const removeStudentFromClass = mutation({
   args: { classId: v.string(), studentId: v.string() },
   handler: async (ctx, { classId, studentId }) => {
-    const cls = await ctx.db.get(classId as any);
+    const cls = await ctx.db.query("classes").filter((q) => q.eq(q.field("_id"), classId as any)).first();
     if (!cls) throw new Error("Class not found");
     const newStudents = (cls.studentIds || []).filter((s: string) => s !== studentId);
-    await ctx.db.patch(classId as any, { studentIds: newStudents, updatedAt: Date.now() });
+    await ctx.db.patch(cls._id, { studentIds: newStudents, updatedAt: Date.now() });
     return { id: classId, studentIds: newStudents };
   },
 });
