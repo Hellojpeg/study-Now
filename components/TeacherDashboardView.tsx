@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
+import { Id } from '../convex/_generated/dataModel';
 import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X, Calculator, Edit3, Package } from 'lucide-react';
 import ScormManager from './ScormManager';
 import ScormPlayer from './ScormPlayer';
@@ -118,7 +119,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
     if (!editingClass) return;
     try {
       await updateClass({
-        classId: editingClass._id,
+        classId: editingClass._id as Id<"classes">,
         name: editingClass.name,
         section: editingClass.section,
         code: editingClass.code,
@@ -135,7 +136,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
       return;
     }
     try {
-      await deleteClassMutation({ classId });
+      await deleteClassMutation({ classId: classId as Id<"classes"> });
     } catch (err) {
       console.error('Failed to delete class:', err);
       alert('Failed to delete class');
