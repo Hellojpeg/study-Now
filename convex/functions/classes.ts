@@ -4,8 +4,9 @@ import { v } from "convex/values";
 // ==================== QUERIES ====================
 
 export const listClassesForTeacher = query({
-  args: { teacherId: v.string() },
+  args: { teacherId: v.optional(v.string()) },
   handler: async (ctx, { teacherId }) => {
+    if (!teacherId) return [];
     return await ctx.db.query("classes").filter((q) => q.eq(q.field("teacherId"), teacherId)).collect();
   },
 });
@@ -32,7 +33,7 @@ export const listAllClasses = query({
 });
 
 export const getStudentsForClass = query({
-  args: { classId: v.string() },
+  args: { classId: v.optional(v.string()) },
   handler: async (ctx, { classId }) => {
     if (!classId) return [];
     const cls = await ctx.db.query("classes").filter((q) => q.eq(q.field("_id"), classId as any)).first();

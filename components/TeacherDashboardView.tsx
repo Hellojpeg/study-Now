@@ -95,10 +95,10 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
   };
 
   // Convex data & roster management
-  const classesList = useQuery(
-    api.functions.classes.listClassesForTeacher,
-    user && user.role === 'TEACHER' ? { teacherId: user.id } : undefined
-  ) || [];
+    const classesList = useQuery(
+        api.functions.classes.listClassesForTeacher,
+        user && user.role === 'TEACHER' ? { teacherId: user.id } : undefined
+    ) || [];
   const createClass = useMutation(api.functions.classes.createClass);
   const updateClass = useMutation(api.functions.classes.updateClass);
   const deleteClassMutation = useMutation(api.functions.classes.deleteClass);
@@ -108,8 +108,11 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
   const [addEmail, setAddEmail] = useState("");
   const [editingClass, setEditingClass] = useState<any>(null);
   const [scormPackage, setScormPackage] = useState<{id: string; url: string} | null>(null);
-  const lookupUser = useQuery(api.functions.users.getUserByEmail, addEmail ? { email: addEmail } : undefined);
-  const rosterUsers = selectedClassId ? useQuery(api.functions.classes.getStudentsForClass, { classId: selectedClassId }) || [] : [];
+    const lookupUser = useQuery(api.functions.users.getUserByEmail, addEmail ? { email: addEmail } : undefined);
+    const rosterUsers = useQuery(
+        api.functions.classes.getStudentsForClass,
+        selectedClassId ? { classId: selectedClassId } : undefined
+    ) || [];
 
   const handleAddClass = async () => {
     const name = prompt('Class name'); if (!name) return;

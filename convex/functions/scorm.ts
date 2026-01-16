@@ -264,8 +264,9 @@ export const deleteAttempt = mutation({
 // ==================== REPORTING QUERIES ====================
 
 export const getPackageReport = query({
-  args: { packageId: v.string() },
+  args: { packageId: v.optional(v.string()) },
   handler: async (ctx, { packageId }) => {
+    if (!packageId) return [];
     const attempts = await ctx.db
       .query("scorm_attempts")
       .filter((q) => q.eq(q.field("packageId"), packageId))
