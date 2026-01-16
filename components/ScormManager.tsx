@@ -46,7 +46,7 @@ const ScormManager: React.FC<ScormManagerProps> = ({ teacherId, onLaunchPackage 
   // Get report for selected package
   const packageReport = useQuery(
     api.functions.scorm.getPackageReport,
-    selectedPackage ? { packageId: selectedPackage } : "skip"
+    selectedPackage ? { packageId: selectedPackage } : undefined
   );
 
   // Handle file upload

@@ -6,7 +6,6 @@ import ResultView from './components/ResultView';
 import LandingView from './components/LandingView';
 import DashboardView from './components/DashboardView'; 
 import TeacherDashboardView from './components/TeacherDashboardView'; 
-import ErrorBoundary from './components/ErrorBoundary'; 
 import AuthView from './components/AuthView'; 
 import MatchingGame from './components/MatchingGame';
 import FlashCardsGame from './components/FlashCardsGame';
@@ -31,6 +30,7 @@ import StudySnakeGame from './components/StudySnakeGame';
 import { QuizState, SubjectId, GameMode, Question, User } from './types';
 import { QUIZZES, CIVICS_COURSE_CONTENT, CIVICS_MODULES, WORLD_HISTORY_COURSE_CONTENT, WORLD_HISTORY_MODULES, US_HISTORY_MODULES, US_HISTORY_COURSE_CONTENT } from './constants';
 import { BookOpen, Users, LogIn, UserCircle, LayoutDashboard, LogOut } from 'lucide-react';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const App: React.FC = () => {
   const [activeSubject, setActiveSubject] = useState<SubjectId>('world-history');
@@ -254,30 +254,11 @@ const App: React.FC = () => {
         return <DashboardView onStartAssignment={handleDashboardAssignment} userName={user?.name || "Student"} />;
     }
 
-    // DEV: quick debug controls to force views
-    if (process.env.NODE_ENV === 'development') {
-      return (
-        <div className="max-w-7xl mx-auto p-8">
-          <h2 className="text-xl font-bold mb-4">Debug Controls (dev only)</h2>
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setGameState(QuizState.TEACHER_DASHBOARD); }}
-              className="px-4 py-2 bg-indigo-600 text-white rounded"
-            >Open Teacher Dashboard</button>
-            <button
-              onClick={() => { setGameState(QuizState.DASHBOARD); }}
-              className="px-4 py-2 bg-slate-200 rounded"
-            >Open Student Dashboard</button>
-          </div>
-        </div>
-      );
-    }
-
     if (gameState === QuizState.TEACHER_DASHBOARD && user?.role === 'TEACHER') {
         return (
-          <ErrorBoundary>
-            <TeacherDashboardView user={user} />
-          </ErrorBoundary>
+            <ErrorBoundary>
+                <TeacherDashboardView user={user} />
+            </ErrorBoundary>
         );
     }
 

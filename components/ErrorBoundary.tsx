@@ -1,12 +1,16 @@
 import React from 'react';
 
+interface Props {
+  children: React.ReactNode;
+}
+
 interface State {
   hasError: boolean;
   error?: Error | null;
 }
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State> {
-  constructor(props: any) {
+export default class ErrorBoundary extends React.Component<Props, State> {
+  constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -15,22 +19,19 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: any) {
-    console.error('Uncaught error in component tree:', error, info);
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('ErrorBoundary caught an error', error, info);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-8 max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
-          <pre className="text-sm text-left bg-slate-50 p-4 rounded border">{this.state.error?.message}</pre>
+        <div className="p-8">
+          <h2 className="text-xl font-bold text-red-600">Something went wrong</h2>
+          <pre className="mt-4 text-sm text-slate-600">{String(this.state.error)}</pre>
         </div>
       );
     }
-
-    return this.props.children as any;
+    return this.props.children as React.ReactElement;
   }
 }
-
-export default ErrorBoundary;
