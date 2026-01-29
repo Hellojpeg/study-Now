@@ -1,14 +1,14 @@
 "use node";
 import { action } from "../_generated/server";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { v } from "convex/values";
 import crypto from "crypto";
 
 export const signIn = action({
   args: { email: v.string(), password: v.string() },
   handler: async (ctx, { email, password }) => {
-    // Fetch user by email
-    const user = await ctx.runQuery(api.functions.users.getUserByEmail, { 
+    // Fetch user by email (using internal query to get password fields)
+    const user = await ctx.runQuery(internal.functions.users.getFullUserByEmail, { 
         email: email.toLowerCase().trim() 
     });
 
@@ -41,8 +41,8 @@ export const signUp = action({
     const role = args.role || "STUDENT";
     const cleanEmail = args.email.toLowerCase().trim();
     
-    // Check if user exists
-    const existing = await ctx.runQuery(api.functions.users.getUserByEmail, { email: cleanEmail });
+    // Check if user exists (can use public query for existence check)
+    const existing = await ctx.runQuery(internal.functions.users.getFullUserByEmail, { email: cleanEmail });
     if (existing) {
       throw new Error("Email already in use");
     }

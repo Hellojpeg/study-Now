@@ -1,15 +1,41 @@
-import { mutation, query } from "../_generated/server";
+import { mutation, query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
+// Public: Returns sanitized user info (NO passwords)
 export const getUserByEmail = query({
-  args: { email: v.string() },
+  args: { email: v.optional(v.string()) },
   handler: async (ctx, { email }) => {
+    if (!email) return null;
     const cleanEmail = email.toLowerCase().trim();
     const user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", cleanEmail))
       .first();
-    return user;
+      
+    if (!user) return null;
+
+    // Sanitize: Return only non-sensitive fields
+    return {
+      _id: user._id,
+      _creationTime: user._creationTime,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  },
+});
+
+// Internal: Returns full user object with password hash (for auth only)
+export const getFullUserByEmail = internalQuery({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    const cleanEmail = email.toLowerCase().trim();
+    return await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", cleanEmail))
+      .first();
   },
 });
 
