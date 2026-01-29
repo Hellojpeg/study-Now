@@ -7,16 +7,25 @@ import crypto from "crypto";
 export const signIn = action({
   args: { email: v.string(), password: v.string() },
   handler: async (ctx, { email, password }) => {
-    const user = await ctx.runQuery(api.functions.users.getUserByEmail, { email });
+    // Fetch user by email
+    const user = await ctx.runQuery(api.functions.users.getUserByEmail, { 
+        email: email.toLowerCase().trim() 
+    });
+
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Invalid credentials");
     }
 
-    const derived = crypto.scryptSync(password, user.passwordSalt, 64).toString("hex");
-    if (derived !== user.passwordHash) {
-      throw new Error("Invalid password");
+    // Verify password
+    try {
+        const derived = crypto.scryptSync(password, user.passwordSalt, 64).toString("hex");
+        if (derived !== user.passwordHash) {
+          throw new Error("Invalid credentials");
+        }
+    } catch (e) {
+        throw new Error("Authentication failed");
     }
-
+    
     return user;
   },
 });
@@ -26,25 +35,27 @@ export const signUp = action({
     name: v.string(),
     email: v.string(),
     password: v.string(),
-    role: v.optional(v.string()), // 'STUDENT' default handled by caller logic or default arg
+    role: v.optional(v.string()), 
   },
   handler: async (ctx, args) => {
     const role = args.role || "STUDENT";
+    const cleanEmail = args.email.toLowerCase().trim();
     
-    // Check existing
-    const existing = await ctx.runQuery(api.functions.users.getUserByEmail, { email: args.email });
+    // Check if user exists
+    const existing = await ctx.runQuery(api.functions.users.getUserByEmail, { email: cleanEmail });
     if (existing) {
       throw new Error("Email already in use");
     }
 
-    // Hash
+    // Hash password
     const salt = crypto.randomBytes(16).toString("hex");
     const passwordHash = crypto.scryptSync(args.password, salt, 64).toString("hex");
     const now = Date.now();
 
+    // Create user
     const result = await ctx.runMutation(api.functions.users.createUser, {
       name: args.name,
-      email: args.email,
+      email: cleanEmail,
       role,
       passwordHash,
       passwordSalt: salt,
@@ -54,9 +65,9 @@ export const signUp = action({
     return { 
         id: result.id, 
         name: args.name, 
-        email: args.email, 
+        email: cleanEmail, 
         role,
-        // Don't return secrets
+        createdAt: now,
     };
   },
 });
