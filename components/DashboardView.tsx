@@ -1,5 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
+import { Id } from '../convex/_generated/dataModel';
 import { SubjectId, GameMode, Assignment, WeeklyTask } from '../types';
 import { MOCK_ASSIGNMENTS, MOCK_WEEKLY_TASKS } from '../constants';
 import { Calendar, CheckCircle, Circle, Clock, ChevronRight, BookOpen, BrainCircuit, Play, BarChart2, Star, Zap } from 'lucide-react';
@@ -7,11 +10,59 @@ import { Calendar, CheckCircle, Circle, Clock, ChevronRight, BookOpen, BrainCirc
 interface DashboardViewProps {
   onStartAssignment: (mode: GameMode, subject: SubjectId) => void;
   userName: string;
+  userId?: string; // Convex user ID for fetching progress
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, userName }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, userName, userId }) => {
   const [tasks, setTasks] = useState<WeeklyTask[]>(MOCK_WEEKLY_TASKS);
-  const [assignments, setAssignments] = useState<Assignment[]>(MOCK_ASSIGNMENTS);
+  
+  // Fetch student progress from Convex if we have a valid userId
+  const isValidUserId = userId && userId !== 'guest';
+  const dbProgress = useQuery(
+    api.functions.progress.getByUser,
+    isValidUserId ? { userId: userId as Id<"users"> } : "skip"
+  );
+  
+  // Fetch quiz history for more detailed stats
+  const quizHistory = useQuery(
+    api.functions.progress.getQuizHistory,
+    isValidUserId ? { userId: userId as Id<"users">, limit: 10 } : "skip"
+  );
+
+  // Use real progress if available, otherwise fallback to demo data
+  const studentProgress = useMemo(() => {
+    if (dbProgress && dbProgress.xp !== undefined) {
+      return {
+        xp: dbProgress.xp,
+        level: dbProgress.level,
+        streakDays: dbProgress.streakDays,
+        quizzesCompleted: dbProgress.quizzesCompleted,
+        totalCorrectAnswers: dbProgress.totalCorrectAnswers,
+        totalQuestionsAnswered: dbProgress.totalQuestionsAnswered,
+      };
+    }
+    // Fallback demo data for guest users
+    return {
+      xp: 2450,
+      level: 5,
+      streakDays: 12,
+      quizzesCompleted: 24,
+      totalCorrectAnswers: 180,
+      totalQuestionsAnswered: 220,
+    };
+  }, [dbProgress]);
+
+  // Calculate grade from progress (mock calculation)
+  const grade = useMemo(() => {
+    const accuracy = studentProgress.totalQuestionsAnswered > 0
+      ? (studentProgress.totalCorrectAnswers / studentProgress.totalQuestionsAnswered) * 100
+      : 92;
+    const letter = accuracy >= 90 ? 'A' : accuracy >= 80 ? 'B' : accuracy >= 70 ? 'C' : accuracy >= 60 ? 'D' : 'F';
+    return { percentage: Math.round(accuracy), letter };
+  }, [studentProgress]);
+
+  // Use mock assignments for now - in production this would come from Convex
+  const assignments = MOCK_ASSIGNMENTS;
 
   const handleCompleteTask = (index: number) => {
       if (tasks[index].isLocked) return;
@@ -36,12 +87,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, userNa
           <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl shadow-sm border border-slate-100">
               <div className="text-right">
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Grade</div>
-                  <div className="text-2xl font-black text-emerald-500">92% A</div>
+                  <div className="text-2xl font-black text-emerald-500">{grade.percentage}% {grade.letter}</div>
               </div>
               <div className="h-10 w-px bg-slate-100"></div>
               <div className="text-right">
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">XP Earned</div>
-                  <div className="text-2xl font-black text-blue-500">2,450</div>
+                  <div className="text-2xl font-black text-blue-500">{studentProgress.xp.toLocaleString()}</div>
               </div>
           </div>
       </div>
@@ -89,7 +140,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, userNa
               <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-6 shadow-xl text-white">
                   <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-yellow-300" /> Study Streak</h3>
                   <div className="flex items-end gap-2 mb-2">
-                      <span className="text-5xl font-black">12</span>
+                      <span className="text-5xl font-black">{studentProgress.streakDays}</span>
                       <span className="text-lg font-medium opacity-80 mb-2">days</span>
                   </div>
                   <p className="text-sm opacity-70">Keep it up! You're on fire.</p>

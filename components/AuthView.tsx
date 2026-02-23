@@ -43,9 +43,10 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
           onLogin(user);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Auth error', err);
-      setErrorMsg(err?.message || 'Authentication failed');
+      const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
+      setErrorMsg(errorMessage);
     } finally {
       setLoading(false);
     }

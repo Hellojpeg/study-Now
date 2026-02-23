@@ -12,6 +12,29 @@ interface TeacherDashboardViewProps {
   user: User;
 }
 
+// Class data from Convex
+interface ClassData {
+  _id: Id<"classes">;
+  name: string;
+  section: string;
+  code: string;
+  teacherId: string;
+  studentIds: string[];
+  courseId?: Id<"courses">;
+  assignmentIds?: Id<"assignments">[];
+  createdAt: number;
+  updatedAt?: number;
+}
+
+// Student/User data from Convex
+interface StudentData {
+  _id: Id<"users">;
+  name: string;
+  email: string;
+  role: string;
+  id?: string; // For fallback compatibility
+}
+
 type QuestionType = 'MCQ' | 'SELECT_ALL' | 'TRUE_FALSE' | 'NUMBER' | 'SHORT' | 'ESSAY';
 
 interface ManualQuestion {
@@ -73,7 +96,45 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
     setQuizStep('EDITOR');
   };
 
-  const updateManualQuestion = (index: number, field: keyof ManualQuestion, value: any) => {
+  // Publish quiz questions to database
+  const handlePublishQuiz = async () => {
+    // Use the first course as default (in production, let teacher select)
+    const defaultCourse = coursesList[0];
+    if (!defaultCourse) {
+      alert("No courses available. Please create a course first.");
+      return;
+    }
+
+    try {
+      // Save each question to the database
+      for (const q of quizDraft.questions) {
+        await createQuestion({
+          courseId: defaultCourse._id,
+          unit: "Teacher Created",
+          question: q.question,
+          options: q.options,
+          correctAnswerIndex: q.correctAnswerIndex,
+          questionType: "MCQ",
+        });
+      }
+      
+      alert(`Quiz published! ${quizDraft.questions.length} questions saved to database.`);
+      setQuizStep('LIST');
+      setQuizDraft({
+        mode: 'EXTRACTION',
+        sourceType: 'TEXT',
+        textInput: '',
+        file: null,
+        questions: [],
+        manualQuestions: Array.from({ length: 5 }, (_, i) => ({ id: i, type: 'MCQ', answer: '', tags: '' }))
+      });
+    } catch (err) {
+      console.error("Failed to publish quiz:", err);
+      alert("Failed to publish quiz. Please try again.");
+    }
+  };
+
+  const updateManualQuestion = (index: number, field: keyof ManualQuestion, value: string | QuestionType) => {
       const updated = [...quizDraft.manualQuestions];
       updated[index] = { ...updated[index], [field]: value };
       setQuizDraft(prev => ({ ...prev, manualQuestions: updated }));
@@ -97,35 +158,44 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
   // Convex data & roster management
     const classesList = useQuery(
         api.functions.classes.listClassesForTeacher,
-        user && user.role === 'TEACHER' ? { teacherId: user.id } : undefined
+        user && user.role === 'TEACHER' ? { teacherId: user.id } : "skip"
     ) || [];
   const createClass = useMutation(api.functions.classes.createClass);
   const updateClass = useMutation(api.functions.classes.updateClass);
   const deleteClassMutation = useMutation(api.functions.classes.deleteClass);
   const addStudentToClass = useMutation(api.functions.classes.addStudentToClass);
   const removeStudentFromClass = useMutation(api.functions.classes.removeStudentFromClass);
+  
+  // Question mutations for quiz creation
+  const createQuestion = useMutation(api.functions.questions.create);
+  const coursesList = useQuery(api.functions.courses.list) ?? [];
+  
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [addEmail, setAddEmail] = useState("");
-  const [editingClass, setEditingClass] = useState<any>(null);
+  const [editingClass, setEditingClass] = useState<ClassData | null>(null);
   const [scormPackage, setScormPackage] = useState<{id: string; url: string} | null>(null);
-    const lookupUser = useQuery(api.functions.users.getUserByEmail, addEmail ? { email: addEmail } : undefined);
+    const lookupUser = useQuery(api.functions.users.getUserByEmail, addEmail ? { email: addEmail } : "skip");
     const rosterUsers = useQuery(
         api.functions.classes.getStudentsForClass,
-        selectedClassId ? { classId: selectedClassId } : undefined
+        selectedClassId ? { classId: selectedClassId as Id<"classes"> } : "skip"
     ) || [];
+
+  // Get current user Id for auth
+  const currentUserId = (user._id || user.id) as Id<"users">;
 
   const handleAddClass = async () => {
     const name = prompt('Class name'); if (!name) return;
     const section = prompt('Section', 'Period 1') || '';
     const code = prompt('Code', `C-${Math.random().toString(36).slice(2,7).toUpperCase()}`) || '';
-    await createClass({ name, section, code, teacherId: user.id });
+    await createClass({ userId: currentUserId, name, section, code });
   };
 
   const handleEditClass = async () => {
     if (!editingClass) return;
     try {
       await updateClass({
-        classId: editingClass._id as Id<"classes">,
+        userId: currentUserId,
+        classId: editingClass._id,
         name: editingClass.name,
         section: editingClass.section,
         code: editingClass.code,
@@ -142,7 +212,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
       return;
     }
     try {
-      await deleteClassMutation({ classId: classId as Id<"classes"> });
+      await deleteClassMutation({ userId: currentUserId, classId: classId as Id<"classes"> });
     } catch (err) {
       console.error('Failed to delete class:', err);
       alert('Failed to delete class');
@@ -156,17 +226,17 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
   const handleAddStudent = async () => {
     if (!selectedClassId) return;
     if (!lookupUser) { alert('No user found with that email'); return; }
-    const sid = (lookupUser as any)._id || (lookupUser as any).id;
-    await addStudentToClass({ classId: selectedClassId, studentId: sid });
+    const sid = lookupUser._id ?? '';
+    await addStudentToClass({ userId: currentUserId, classId: selectedClassId as Id<"classes">, studentId: sid });
     setAddEmail('');
   };
 
   const handleRemoveStudent = async (studentId: string) => {
     if (!selectedClassId) return;
-    await removeStudentFromClass({ classId: selectedClassId, studentId });
+    await removeStudentFromClass({ userId: currentUserId, classId: selectedClassId as Id<"classes">, studentId });
   };
 
-  const NavItem = ({ icon: Icon, label, tab }: { icon: any, label: string, tab: typeof activeTab }) => (
+  const NavItem = ({ icon: Icon, label, tab }: { icon: React.ComponentType<{className?: string}>, label: string, tab: typeof activeTab }) => (
       <button 
         onClick={() => { setActiveTab(tab); setQuizStep('LIST'); }}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group ${activeTab === tab ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
@@ -385,7 +455,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
                             <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><BookOpen className="w-5 h-5 text-indigo-500"/> Active Classes</h2>
                             <div className="space-y-4">
-                                {classesList.map((cls: any) => (
+                                {classesList.map((cls: ClassData) => (
                                     <div key={cls._id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-indigo-200 transition-all group">
                                         <div>
                                             <div className="font-bold text-slate-800">{cls.name}</div>
@@ -418,7 +488,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
             {/* CLASSES VIEW */}
             {activeTab === 'CLASSES' && (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-                    {classesList.map((cls: any) => (
+                    {classesList.map((cls: ClassData) => (
                       <div key={cls._id} className="bg-white p-6 rounded-3xl border border-slate-200 hover:shadow-xl hover:border-indigo-200 transition-all group">
                         <div className="flex justify-between items-start mb-4">
                           <span className="bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-lg text-xs uppercase tracking-wider">{cls.section}</span>
@@ -530,13 +600,13 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
       </div>
       <div className="space-y-3 max-h-64 overflow-auto">
         {rosterUsers.length === 0 && <div className="text-sm text-slate-500">No students in this class yet.</div>}
-        {rosterUsers.map((s: any) => (
-          <div key={(s as any)._id || s.id} className="flex items-center justify-between p-3 border rounded-lg">
+        {rosterUsers.filter((s): s is NonNullable<typeof s> => s !== null).map((s) => (
+          <div key={s._id} className="flex items-center justify-between p-3 border rounded-lg">
             <div>
               <div className="font-bold">{s.name}</div>
               <div className="text-xs text-slate-500">{s.email}</div>
             </div>
-            <button onClick={() => handleRemoveStudent((s as any)._id || s.id)} className="text-red-500">Remove</button>
+            <button onClick={() => handleRemoveStudent(s._id)} className="text-red-500">Remove</button>
           </div>
         ))}
       </div>
@@ -671,7 +741,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                                 </div>
                                 <div className="flex gap-4">
                                     <button onClick={() => setQuizStep('SOURCE')} className="px-6 py-2 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-50">Back</button>
-                                    <button onClick={() => { alert("Quiz Published!"); setQuizStep('LIST'); }} className="px-6 py-2 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200">Publish Quiz</button>
+                                    <button onClick={handlePublishQuiz} className="px-6 py-2 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200">Publish Quiz</button>
                                 </div>
                             </div>
 

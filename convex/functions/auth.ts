@@ -4,6 +4,9 @@ import { api, internal } from "../_generated/api";
 import { v } from "convex/values";
 import crypto from "crypto";
 
+// ============== Authentication Actions ==============
+// NOTE: Authorization helpers (requireAuth, requireTeacher, etc.) are in authHelpers.ts
+
 export const signIn = action({
   args: { email: v.string(), password: v.string() },
   handler: async (ctx, { email, password }) => {
@@ -35,10 +38,10 @@ export const signUp = action({
     name: v.string(),
     email: v.string(),
     password: v.string(),
-    role: v.optional(v.string()), 
+    // NOTE: role parameter removed for security - all signups are STUDENT
+    // Teachers/Admins are created via scripts or promoted by existing admins
   },
   handler: async (ctx, args) => {
-    const role = args.role || "STUDENT";
     const cleanEmail = args.email.toLowerCase().trim();
     
     // Check if user exists (can use public query for existence check)
@@ -52,11 +55,10 @@ export const signUp = action({
     const passwordHash = crypto.scryptSync(args.password, salt, 64).toString("hex");
     const now = Date.now();
 
-    // Create user
+    // Create user - always STUDENT role (enforced by createUser mutation)
     const result = await ctx.runMutation(api.functions.users.createUser, {
       name: args.name,
       email: cleanEmail,
-      role,
       passwordHash,
       passwordSalt: salt,
       createdAt: now,
@@ -66,7 +68,7 @@ export const signUp = action({
         id: result.id, 
         name: args.name, 
         email: cleanEmail, 
-        role,
+        role: "STUDENT", // Always STUDENT for public signups
         createdAt: now,
     };
   },

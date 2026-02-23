@@ -134,6 +134,7 @@ export type UserRole = 'STUDENT' | 'TEACHER';
 
 export interface User {
   id: string;
+  _id?: string; // Convex document ID (present when from database)
   name: string;
   email: string;
   role: UserRole;

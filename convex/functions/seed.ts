@@ -1,9 +1,10 @@
 "use node";
 import { action } from "../_generated/server";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { v } from "convex/values";
 import crypto from "crypto";
 
+// Seed a teacher account (admin script only)
 export const seedTeacher = action({
   args: {
     email: v.string(),
@@ -17,19 +18,25 @@ export const seedTeacher = action({
     // Hash password
     const salt = crypto.randomBytes(16).toString("hex");
     const passwordHash = crypto.scryptSync(args.password, salt, 64).toString("hex");
-    const now = Date.now(); // Store as number for serialization safety
+    const now = Date.now();
 
-    // Call mutation
-    const result = await ctx.runMutation(api.functions.users.upsertUser, {
+    // Use internal mutation to bypass STUDENT-only restriction
+    const result = await ctx.runMutation(internal.functions.users.internalCreateUser, {
       name,
       email: normEmail,
       role: "TEACHER",
       passwordHash,
       passwordSalt: salt,
       createdAt: now,
-      updatedAt: now,
     });
 
     return result;
+  },
+});
+
+export const seedCourses = action({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.runMutation(internal.functions.courses.seed, {});
   },
 });

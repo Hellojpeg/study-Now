@@ -1,5 +1,7 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireTeacher, requireAuth } from "./authHelpers";
+import { Id } from "../_generated/dataModel";
 
 // ==================== QUERIES ====================
 
@@ -33,13 +35,13 @@ export const listAllClasses = query({
 });
 
 export const getStudentsForClass = query({
-  args: { classId: v.optional(v.string()) },
+  args: { classId: v.optional(v.id("classes")) },
   handler: async (ctx, { classId }) => {
     if (!classId) return [];
-    const cls = await ctx.db.query("classes").filter((q) => q.eq(q.field("_id"), classId as any)).first();
+    const cls = await ctx.db.get(classId);
     if (!cls) return [];
     const ids = cls.studentIds || [];
-    const users = await Promise.all(ids.map((id: string) => ctx.db.get(id as any)));
+    const users = await Promise.all(ids.map((id: string) => ctx.db.get(id as Id<"users">)));
     return users.filter(Boolean);
   },
 });
@@ -48,42 +50,49 @@ export const getStudentsForClass = query({
 
 export const createClass = mutation({
   args: {
+    userId: v.id("users"),
     name: v.string(),
     section: v.string(),
     code: v.string(),
-    teacherId: v.string(),
+    courseId: v.optional(v.id("courses")),
   },
-  handler: async (ctx, { name, section, code, teacherId }) => {
+  handler: async (ctx, { userId, name, section, code, courseId }) => {
+    await requireTeacher(ctx, userId);
+    
     const id = await ctx.db.insert("classes", {
       name,
       section,
       code,
-      teacherId,
+      teacherId: userId,
+      courseId,
       studentIds: [],
-      assignments: [],
+      assignmentIds: [],
       createdAt: Date.now(),
     });
-    return { id, name, section, code, teacherId };
+    return { id, name, section, code, teacherId: userId };
   },
 });
 
 export const updateClass = mutation({
   args: {
+    userId: v.id("users"),
     classId: v.id("classes"),
     name: v.optional(v.string()),
     section: v.optional(v.string()),
     code: v.optional(v.string()),
-    assignments: v.optional(v.array(v.string())),
+    assignmentIds: v.optional(v.array(v.id("assignments"))),
   },
-  handler: async (ctx, { classId, ...updates }) => {
+  handler: async (ctx, { userId, classId, ...updates }) => {
+    await requireTeacher(ctx, userId);
+    
     const cls = await ctx.db.get(classId);
     if (!cls) throw new Error("Class not found");
     
-    const patch: Record<string, any> = { updatedAt: Date.now() };
+    const patch: { updatedAt: number; name?: string; section?: string; code?: string; assignmentIds?: Id<"assignments">[] } = { updatedAt: Date.now() };
     if (updates.name !== undefined) patch.name = updates.name;
     if (updates.section !== undefined) patch.section = updates.section;
     if (updates.code !== undefined) patch.code = updates.code;
-    if (updates.assignments !== undefined) patch.assignments = updates.assignments;
+    if (updates.assignmentIds !== undefined) patch.assignmentIds = updates.assignmentIds;
     
     await ctx.db.patch(classId, patch);
     return { id: classId, ...patch };
@@ -91,8 +100,13 @@ export const updateClass = mutation({
 });
 
 export const deleteClass = mutation({
-  args: { classId: v.id("classes") },
-  handler: async (ctx, { classId }) => {
+  args: { 
+    userId: v.id("users"),
+    classId: v.id("classes"),
+  },
+  handler: async (ctx, { userId, classId }) => {
+    await requireTeacher(ctx, userId);
+    
     const cls = await ctx.db.get(classId);
     if (!cls) throw new Error("Class not found");
     await ctx.db.delete(classId);
@@ -101,9 +115,15 @@ export const deleteClass = mutation({
 });
 
 export const addStudentToClass = mutation({
-  args: { classId: v.string(), studentId: v.string() },
-  handler: async (ctx, { classId, studentId }) => {
-    const cls = await ctx.db.query("classes").filter((q) => q.eq(q.field("_id"), classId as any)).first();
+  args: { 
+    userId: v.id("users"), // Teacher performing the action
+    classId: v.id("classes"), 
+    studentId: v.string(),
+  },
+  handler: async (ctx, { userId, classId, studentId }) => {
+    await requireTeacher(ctx, userId);
+    
+    const cls = await ctx.db.get(classId);
     if (!cls) throw new Error("Class not found");
     const existingIds = Array.isArray(cls.studentIds) ? cls.studentIds : [];
     if (existingIds.includes(studentId)) {
@@ -116,9 +136,15 @@ export const addStudentToClass = mutation({
 });
 
 export const removeStudentFromClass = mutation({
-  args: { classId: v.string(), studentId: v.string() },
-  handler: async (ctx, { classId, studentId }) => {
-    const cls = await ctx.db.query("classes").filter((q) => q.eq(q.field("_id"), classId as any)).first();
+  args: { 
+    userId: v.id("users"), // Teacher performing the action
+    classId: v.id("classes"), 
+    studentId: v.string(),
+  },
+  handler: async (ctx, { userId, classId, studentId }) => {
+    await requireTeacher(ctx, userId);
+    
+    const cls = await ctx.db.get(classId);
     if (!cls) throw new Error("Class not found");
     const newStudents = (cls.studentIds || []).filter((s: string) => s !== studentId);
     await ctx.db.patch(cls._id, { studentIds: newStudents, updatedAt: Date.now() });
@@ -127,27 +153,60 @@ export const removeStudentFromClass = mutation({
 });
 
 export const addAssignmentToClass = mutation({
-  args: { classId: v.id("classes"), assignmentId: v.string() },
-  handler: async (ctx, { classId, assignmentId }) => {
+  args: { 
+    userId: v.id("users"),
+    classId: v.id("classes"), 
+    assignmentId: v.id("assignments"),
+  },
+  handler: async (ctx, { userId, classId, assignmentId }) => {
+    await requireTeacher(ctx, userId);
+    
     const cls = await ctx.db.get(classId);
     if (!cls) throw new Error("Class not found");
-    const existingAssignments = Array.isArray(cls.assignments) ? cls.assignments : [];
+    const existingAssignments = Array.isArray(cls.assignmentIds) ? cls.assignmentIds : [];
     if (existingAssignments.includes(assignmentId)) {
-      return { id: classId, assignments: existingAssignments };
+      return { id: classId, assignmentIds: existingAssignments };
     }
     const newAssignments = [...existingAssignments, assignmentId];
-    await ctx.db.patch(classId, { assignments: newAssignments, updatedAt: Date.now() });
-    return { id: classId, assignments: newAssignments };
+    await ctx.db.patch(classId, { assignmentIds: newAssignments, updatedAt: Date.now() });
+    return { id: classId, assignmentIds: newAssignments };
   },
 });
 
 export const removeAssignmentFromClass = mutation({
-  args: { classId: v.id("classes"), assignmentId: v.string() },
-  handler: async (ctx, { classId, assignmentId }) => {
+  args: { 
+    userId: v.id("users"),
+    classId: v.id("classes"), 
+    assignmentId: v.id("assignments"),
+  },
+  handler: async (ctx, { userId, classId, assignmentId }) => {
+    await requireTeacher(ctx, userId);
+    
     const cls = await ctx.db.get(classId);
     if (!cls) throw new Error("Class not found");
-    const newAssignments = (cls.assignments || []).filter((a: string) => a !== assignmentId);
-    await ctx.db.patch(classId, { assignments: newAssignments, updatedAt: Date.now() });
-    return { id: classId, assignments: newAssignments };
+    const newAssignments = (cls.assignmentIds || []).filter((a) => a !== assignmentId);
+    await ctx.db.patch(classId, { assignmentIds: newAssignments, updatedAt: Date.now() });
+    return { id: classId, assignmentIds: newAssignments };
+  },
+});
+
+// Join a class by code (for students)
+export const joinClassByCode = mutation({
+  args: { code: v.string(), studentId: v.string() },
+  handler: async (ctx, { code, studentId }) => {
+    const cls = await ctx.db
+      .query("classes")
+      .withIndex("by_code", (q) => q.eq("code", code))
+      .first();
+    if (!cls) throw new Error("Class not found with that code");
+    
+    const existingIds = Array.isArray(cls.studentIds) ? cls.studentIds : [];
+    if (existingIds.includes(studentId)) {
+      return { success: true, classId: cls._id, message: "Already enrolled" };
+    }
+    
+    const newStudents = [...existingIds, studentId];
+    await ctx.db.patch(cls._id, { studentIds: newStudents, updatedAt: Date.now() });
+    return { success: true, classId: cls._id, message: "Successfully joined class" };
   },
 });
