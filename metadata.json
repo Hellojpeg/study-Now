@@ -1,5 +1,6 @@
 {
   "name": "Mr. Gomez's Class",
   "description": "A rapid-fire study application for World History, Civics, and US History Midterms.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

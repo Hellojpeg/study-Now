@@ -1,9 +1,14 @@
 
 import React, { useState } from 'react';
 import { UserRole, User } from '../types';
-import { BookOpen, UserCircle, GraduationCap, ArrowRight, ArrowLeft } from 'lucide-react';
-import { useAction } from 'convex/react';
-import { api } from '../convex/_generated/api';
+import { BookOpen, UserCircle, GraduationCap, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { auth, db } from '../firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AuthViewProps {
   onLogin: (user: User) => void;
@@ -16,37 +21,66 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
-
-  const signIn = useAction(api.functions.auth.signIn);
-  const signUp = useAction(api.functions.auth.signUp);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg('');
     setLoading(true);
+    setError(null);
 
     try {
-      const storage = rememberMe ? localStorage : sessionStorage;
       if (mode === 'SIGNUP') {
-        const user = await signUp({ name, email, password, role });
-        if (user) {
-          storage.setItem('user', JSON.stringify(user));
-          onLogin(user);
-        }
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const firebaseUser = userCredential.user;
+
+        // Add display name
+        await updateProfile(firebaseUser, { displayName: name });
+
+        const newUser: User = {
+          id: firebaseUser.uid,
+          name: name,
+          email: email,
+          role: role
+        };
+
+        // Save to Firestore
+        await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+        
+        onLogin(newUser);
       } else {
-        const user = await signIn({ email, password });
-        if (user) {
-          storage.setItem('user', JSON.stringify(user));
-          onLogin(user);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const firebaseUser = userCredential.user;
+
+        // Fetch user data from Firestore
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        
+        if (userDoc.exists()) {
+          onLogin(userDoc.data() as User);
+        } else {
+          // Fallback if doc doesn't exist (e.g. manual delete from console)
+          const fallbackUser: User = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email || '',
+            role: 'STUDENT' // Default to student
+          };
+          onLogin(fallbackUser);
         }
       }
-    } catch (err: unknown) {
-      console.error('Auth error', err);
-      const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
-      setErrorMsg(errorMessage);
+    } catch (err: any) {
+      console.error("Auth Error:", err);
+      let message = "Authentication failed.";
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        message = "Invalid email or password.";
+      } else if (err.code === 'auth/email-already-in-use') {
+        message = "This email is already registered.";
+      } else if (err.code === 'auth/weak-password') {
+        message = "Password should be at least 6 characters.";
+      } else if (err.code === 'auth/invalid-email') {
+        message = "Please enter a valid email address.";
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -101,9 +135,6 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                </div>
 
                <form onSubmit={handleSubmit} className="space-y-4">
-                   {errorMsg && (
-                     <div className="text-red-600 text-sm font-bold p-2 bg-red-50 rounded-md">{errorMsg}</div>
-                   )}
                    {mode === 'SIGNUP' && (
                        <div>
                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Full Name</label>
@@ -162,21 +193,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                        </div>
                    </div>
 
-                   <div className="flex items-center gap-2 pt-2">
-                     <input
-                       type="checkbox"
-                       id="rememberMe"
-                       checked={rememberMe}
-                       onChange={(e) => setRememberMe(e.target.checked)}
-                       className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                     />
-                     <label htmlFor="rememberMe" className="text-sm text-slate-600 font-medium">
-                       Remember me next time
-                     </label>
-                   </div>
-
-                   <button disabled={loading} type="submit" className="w-full bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-1 mt-6 flex items-center justify-center gap-2">
-                       {loading ? (mode === 'LOGIN' ? 'Signing in...' : 'Creating...') : (mode === 'LOGIN' ? 'Sign In' : 'Create Account')} <ArrowRight className="w-4 h-4" />
+                   <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-1 mt-6 flex items-center justify-center gap-2">
+                       {mode === 'LOGIN' ? 'Sign In' : 'Create Account'} <ArrowRight className="w-4 h-4" />
                    </button>
                </form>
            </div>

@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "App user profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID." },
+        "name": { "type": "string", "description": "Display name." },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["STUDENT", "TEACHER"] },
+        "avatar": { "type": "string", "description": "Avatar character emoji or URL." }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "QuizScore": {
+      "title": "QuizScore",
+      "description": "Record of a completed quiz.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "score": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "missedQuestions": { "type": "array", "items": { "type": "number" } }
+      },
+      "required": ["userId", "subjectId", "score", "totalQuestions", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Storage for user profile documents."
+    },
+    "/scores/{scoreId}": {
+      "schema": "QuizScore",
+      "description": "Storage for quiz results."
+    }
+  }
+}
