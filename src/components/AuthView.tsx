@@ -27,6 +27,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isTeacherEmail = (value?: string | null) => value?.toLowerCase() === 'jpgomezmedia@gmail.com';
+
   const toAppUser = (raw: any, fallback: { uid: string; name: string; email: string; role: UserRole }): User => ({
     id: raw?.id || raw?.uid || fallback.uid,
     name: raw?.name || fallback.name,
@@ -67,7 +69,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Google User',
       email: firebaseUser.email || '',
-      role: firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT'
+      role: isTeacherEmail(firebaseUser.email) ? 'TEACHER' : 'STUDENT'
     };
 
     await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(newUser));
@@ -121,7 +123,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
           id: firebaseUser.uid,
           name: name,
           email: email,
-          role: role
+          role: isTeacherEmail(email) ? 'TEACHER' : role
         };
 
         // Save to Firestore
@@ -142,7 +144,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
             email: firebaseUser.email || '',
             role: 'STUDENT',
           });
-          if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
+          if (isTeacherEmail(firebaseUser.email) && userData.role !== 'TEACHER') {
             userData.role = 'TEACHER';
             await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(userData), { merge: true });
           }
@@ -153,7 +155,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
             id: firebaseUser.uid,
             name: firebaseUser.displayName || 'User',
             email: firebaseUser.email || '',
-            role: 'STUDENT' // Default to student
+            role: isTeacherEmail(firebaseUser.email) ? 'TEACHER' : 'STUDENT'
           };
           onLogin(fallbackUser);
         }
@@ -212,7 +214,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
                            <BookOpen className="w-6 h-6 text-white" />
                        </div>
-                       <span className="font-bold text-xl tracking-tight">Midterm Prep</span>
+                       <span className="font-bold text-xl tracking-tight">Excell.AI</span>
                    </div>
                    <h1 className="text-4xl md:text-5xl font-black leading-tight mb-6">
                        {mode === 'LOGIN' ? 'Welcome back!' : 'Join the class.'}
@@ -223,7 +225,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                          : 'Create an account to track progress, join classes, and compete.'}
                    </p>
                </div>
-               <div className="text-sm text-slate-500">© 2024 EduPrep Inc.</div>
+               <div className="text-sm text-slate-500">© 2026 Excell.AI</div>
            </div>
 
            {/* Right: Form */}

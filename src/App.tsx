@@ -32,7 +32,7 @@ import { QUIZZES, CIVICS_COURSE_CONTENT, CIVICS_MODULES, WORLD_HISTORY_COURSE_CO
 import { BookOpen, Users, LogIn, UserCircle, LayoutDashboard, LogOut } from 'lucide-react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
 
 const App: React.FC = () => {
   const [activeSubject, setActiveSubject] = useState<SubjectId>('civics');
@@ -77,6 +77,19 @@ const App: React.FC = () => {
             role: raw?.role || 'STUDENT',
             avatar: raw?.avatar,
           };
+
+          if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
+            userData.role = 'TEACHER';
+            await setDoc(doc(db, 'users', firebaseUser.uid), {
+              id: userData.id,
+              uid: firebaseUser.uid,
+              name: userData.name,
+              email: userData.email,
+              role: userData.role,
+              ...(userData.avatar ? { avatar: userData.avatar } : {}),
+            }, { merge: true });
+          }
+
           setUser(userData);
           // If we are on landing, move to dashboard
           if (gameState === QuizState.LANDING) {
@@ -387,7 +400,7 @@ const App: React.FC = () => {
                     <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
                         <BookOpen className="w-6 h-6" />
                     </div>
-                    <span>Master your Exams</span>
+                    <span>Excell.AI</span>
                 </button>
 
                 {gameState !== QuizState.LANDING && gameState !== QuizState.DASHBOARD && gameState !== QuizState.TEACHER_DASHBOARD && (
