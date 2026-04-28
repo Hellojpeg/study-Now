@@ -176,14 +176,79 @@ const QuizView: React.FC<QuizViewProps> = ({
     setSelectedWord(cleanWord);
     setIsLoadingDef(true);
     setWordDefinition(null);
-    try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
-      const data = await response.json();
-      if (Array.isArray(data) && data[0].meanings && data[0].meanings[0].definitions) {
-        setWordDefinition(data[0].meanings[0].definitions[0].definition);
-      } else {
-        setWordDefinition("Definition not found.");
+
+    const extractDictionaryApiDefinition = (data: any): string | null => {
+      if (!Array.isArray(data) || data.length === 0) return null;
+
+      const meanings = data[0]?.meanings;
+      const definition = meanings?.[0]?.definitions?.[0]?.definition;
+      return typeof definition === 'string' && definition.trim().length > 0
+        ? definition
+        : null;
+    };
+
+    const extractDatamuseDefinition = (data: any): string | null => {
+      if (!Array.isArray(data) || data.length === 0) return null;
+
+      const defs: unknown = data[0]?.defs;
+      if (!Array.isArray(defs) || defs.length === 0) return null;
+
+      const raw = defs[0];
+      if (typeof raw !== 'string') return null;
+
+      const pieces = raw.split('\t');
+      const parsed = pieces.length > 1 ? pieces[1] : pieces[0];
+      return parsed.trim().length > 0 ? parsed : null;
+    };
+
+    const fetchWithTimeout = async (url: string, timeoutMs = 7000): Promise<any> => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+        return await response.json();
+      } finally {
+        window.clearTimeout(timeout);
       }
+    };
+
+    try {
+      const encodedWord = encodeURIComponent(cleanWord);
+
+      const sources: Array<() => Promise<string | null>> = [
+        async () => {
+          const data = await fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`);
+          return extractDictionaryApiDefinition(data);
+        },
+        async () => {
+          const proxiedUrl = encodeURIComponent(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`);
+          const data = await fetchWithTimeout(`https://api.allorigins.win/raw?url=${proxiedUrl}`);
+          return extractDictionaryApiDefinition(data);
+        },
+        async () => {
+          const data = await fetchWithTimeout(`https://api.datamuse.com/words?sp=${encodedWord}&md=d&max=1`);
+          return extractDatamuseDefinition(data);
+        }
+      ];
+
+      let resolvedDefinition: string | null = null;
+      for (const source of sources) {
+        try {
+          const next = await source();
+          if (next) {
+            resolvedDefinition = next;
+            break;
+          }
+        } catch {
+          // Try next source.
+        }
+      }
+
+      setWordDefinition(resolvedDefinition ?? "Definition not found.");
     } catch (e) {
       setWordDefinition("Failed to fetch definition.");
     }
