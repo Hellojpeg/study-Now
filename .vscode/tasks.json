@@ -1,0 +1,11 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "My git script",
+            "type": "shell",
+            "command": "git ls-tree HEAD src/components/ | grep -i flash > git_flash_tree.txt",
+            "problemMatcher": []
+        }
+    ]
+}

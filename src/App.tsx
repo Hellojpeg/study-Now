@@ -384,6 +384,8 @@ const App: React.FC = () => {
                 {gameState !== QuizState.LANDING && gameState !== QuizState.DASHBOARD && gameState !== QuizState.TEACHER_DASHBOARD && (
                   <div className="hidden md:flex items-center gap-1 bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50">
                       <button onClick={() => handleSubjectChange('civics')} className={getTabStyle('civics')}>Civics</button>
+                      <button onClick={() => handleSubjectChange('us-history')} className={getTabStyle('us-history')}>US History</button>
+                      <button onClick={() => handleSubjectChange('world-history')} className={getTabStyle('world-history')}>World History</button>
                   </div>
                 )}
             </div>

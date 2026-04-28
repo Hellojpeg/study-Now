@@ -35,6 +35,11 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [triggerRedFlash, setTriggerRedFlash] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10); // Speed mode timer
 
+  // Dictionary Feature State
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [wordDefinition, setWordDefinition] = useState<string | null>(null);
+  const [isLoadingDef, setIsLoadingDef] = useState(false);
+
   // Find Benchmark Description
   const benchmarkInfo = WORLD_HISTORY_COURSE_CONTENT.benchmarks.find(b => b.code === question.benchmark);
 
@@ -138,6 +143,8 @@ const QuizView: React.FC<QuizViewProps> = ({
     setTriggerRainbow(false);
     setTriggerRedFlash(false);
     setTriggerGreenFlash(false);
+    setSelectedWord(null);
+    setWordDefinition(null);
   };
 
   const getOptionStyles = (index: number) => {
@@ -160,6 +167,27 @@ const QuizView: React.FC<QuizViewProps> = ({
 
     // Unselected options when answered
     return `${baseStyle} border-slate-100 bg-slate-50 text-slate-400`;
+  };
+
+  const handleWordClick = async (word: string) => {
+    const cleanWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
+    if (!cleanWord) return;
+    
+    setSelectedWord(cleanWord);
+    setIsLoadingDef(true);
+    setWordDefinition(null);
+    try {
+      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
+      const data = await response.json();
+      if (Array.isArray(data) && data[0].meanings && data[0].meanings[0].definitions) {
+        setWordDefinition(data[0].meanings[0].definitions[0].definition);
+      } else {
+        setWordDefinition("Definition not found.");
+      }
+    } catch (e) {
+      setWordDefinition("Failed to fetch definition.");
+    }
+    setIsLoadingDef(false);
   };
 
   const progressPercentage = ((currentNumber - 1) / totalQuestions) * 100;
@@ -295,8 +323,40 @@ const QuizView: React.FC<QuizViewProps> = ({
         `}>
           <div className="p-8">
             <div className="flex justify-between items-start mb-6">
-               <h2 className="text-2xl font-bold text-slate-800 leading-snug flex-1 mr-4">
-                  {question.question}
+               <h2 className="text-2xl font-bold text-slate-800 leading-snug flex-1 mr-4 relative">
+                  {question.question.split(' ').map((word, i) => {
+                    const id = `${i}-${word}`;
+                    return (
+                      <React.Fragment key={id}>
+                        <span 
+                          onClick={() => handleWordClick(word)}
+                          className="cursor-pointer hover:bg-yellow-200 hover:text-yellow-900 transition-colors rounded decoration-dashed underline-offset-4 decoration-slate-300 hover:underline"
+                        >
+                          {word}
+                        </span>
+                        {' '}
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* Definition Tooltip */}
+                  {selectedWord && (
+                    <div className="absolute z-50 bg-slate-900 text-white p-5 rounded-2xl shadow-2xl mt-4 w-72 text-sm -left-4 font-normal border border-slate-700">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="font-bold text-lg text-yellow-400 capitalize">{selectedWord}</span>
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedWord(null); }} className="text-slate-400 hover:text-white bg-slate-800 p-1 rounded-full">
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {isLoadingDef ? (
+                        <div className="flex items-center gap-2 text-slate-400 py-2">
+                          <Zap className="w-4 h-4 animate-pulse text-yellow-500 fill-yellow-500" /> Looking up...
+                        </div>
+                      ) : (
+                        <p className="leading-relaxed text-slate-300">{wordDefinition}</p>
+                      )}
+                    </div>
+                  )}
               </h2>
                {!isAnswered && gameMode !== 'speed' && (
                   <button 
