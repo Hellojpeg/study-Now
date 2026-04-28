@@ -50,7 +50,7 @@ const AnalysisGame: React.FC<AnalysisGameProps> = ({ onExit }) => {
       
       try {
           // Use AI to grade the response
-          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
           const response = await ai.models.generateContent({
               model: 'gemini-2.5-flash',
               contents: `You are an 8th Grade Civics teacher grading a student response.

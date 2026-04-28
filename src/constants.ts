@@ -93,6 +93,18 @@ export const QUIZZES: Record<SubjectId, QuizData> = {
     title: 'Civics',
     description: 'Master the MJ Civics End-of-Course Practice Exam.',
     questions: CIV_EOC
+  },
+  'us-history': {
+    id: 'us-history',
+    title: 'US History',
+    description: 'Build confidence with core U.S. History standards and constitutional principles.',
+    questions: US_MIDTERM
+  },
+  'world-history': {
+    id: 'world-history',
+    title: 'World History',
+    description: 'Practice key world history concepts from ancient civilizations to classical eras.',
+    questions: [...WH_MIDTERM, ...GREECE_QUESTIONS]
   }
 };
 
