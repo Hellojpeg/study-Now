@@ -30,11 +30,11 @@ const LandingView: React.FC<LandingViewProps> = ({ onSelectSubject }) => {
       {/* Hero Section */}
       <div className="text-center mb-10 space-y-4 pt-4">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-xs uppercase tracking-widest shadow-sm">
-          <Stars className="w-4 h-4 text-indigo-500" /> Excell.AI 2026
+          <Stars className="w-4 h-4 text-indigo-500" /> Study Now 2026
         </div>
         
         <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
-          Excell.AI <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-600">History Prep</span>
+          Study Now <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-600">History Prep</span>
         </h1>
         
         <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto font-medium leading-relaxed">

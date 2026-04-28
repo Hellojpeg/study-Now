@@ -1,8 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User } from '../types';
 import { MOCK_CLASSES } from '../constants';
 import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X, Calculator } from 'lucide-react';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface TeacherDashboardViewProps {
   user: User;
@@ -26,6 +28,18 @@ interface QuizDraft {
   manualQuestions: ManualQuestion[]; 
 }
 
+interface SubmissionRecord {
+    id: string;
+    studentFirstName: string;
+    studentLastName: string;
+    period: string;
+    subjectId: string;
+    score: number;
+    totalQuestions: number;
+    confirmationCode: string;
+    date: string;
+}
+
 const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'CLASSES' | 'STUDENTS' | 'ASSESSMENTS' | 'SETTINGS'>('DASHBOARD');
@@ -40,6 +54,41 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
     questions: [],
     manualQuestions: Array.from({ length: 5 }, (_, i) => ({ id: i, type: 'MCQ', answer: '', tags: '' }))
   });
+    const [recentSubmissions, setRecentSubmissions] = useState<SubmissionRecord[]>([]);
+    const [loadingSubmissions, setLoadingSubmissions] = useState(true);
+
+    useEffect(() => {
+        const fetchRecentSubmissions = async () => {
+            try {
+                setLoadingSubmissions(true);
+                const q = query(collection(db, 'quizSubmissions'), orderBy('timestamp', 'desc'), limit(20));
+                const snap = await getDocs(q);
+                const rows: SubmissionRecord[] = snap.docs.map((docSnap) => {
+                    const data = docSnap.data() as any;
+                    return {
+                        id: docSnap.id,
+                        studentFirstName: data.studentFirstName || '',
+                        studentLastName: data.studentLastName || '',
+                        period: data.period || '',
+                        subjectId: data.subjectId || '',
+                        score: data.score || 0,
+                        totalQuestions: data.totalQuestions || 0,
+                        confirmationCode: data.confirmationCode || 'N/A',
+                        date: data.timestamp?.toDate?.()?.toLocaleDateString() || 'Recently',
+                    };
+                });
+                setRecentSubmissions(rows);
+            } catch (err) {
+                console.error('Error fetching submissions:', err);
+            } finally {
+                setLoadingSubmissions(false);
+            }
+        };
+
+        if (user.role === 'TEACHER') {
+            fetchRecentSubmissions();
+        }
+    }, [user.role]);
 
   const handleCreateQuiz = () => {
     setActiveTab('ASSESSMENTS');
@@ -300,6 +349,48 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                             </div>
                             <div className="text-4xl font-black text-emerald-500">88%</div>
                         </div>
+                    </div>
+
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-indigo-500" /> Recent Student Submissions
+                            </h2>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Use confirmation code to verify</span>
+                        </div>
+
+                        {loadingSubmissions ? (
+                            <p className="text-sm text-slate-500">Loading submissions...</p>
+                        ) : recentSubmissions.length === 0 ? (
+                            <p className="text-sm text-slate-500">No submissions yet.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left text-slate-500 border-b border-slate-100">
+                                            <th className="py-2 pr-4">Student</th>
+                                            <th className="py-2 pr-4">Period</th>
+                                            <th className="py-2 pr-4">Subject</th>
+                                            <th className="py-2 pr-4">Score</th>
+                                            <th className="py-2 pr-4">Code</th>
+                                            <th className="py-2">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {recentSubmissions.map((row) => (
+                                            <tr key={row.id} className="border-b border-slate-50 last:border-0">
+                                                <td className="py-3 pr-4 font-semibold text-slate-800">{row.studentFirstName} {row.studentLastName}</td>
+                                                <td className="py-3 pr-4 text-slate-600">{row.period}</td>
+                                                <td className="py-3 pr-4 capitalize text-slate-600">{String(row.subjectId).replace('-', ' ')}</td>
+                                                <td className="py-3 pr-4 text-slate-700">{row.score}/{row.totalQuestions}</td>
+                                                <td className="py-3 pr-4 font-mono text-indigo-700 font-bold">{row.confirmationCode}</td>
+                                                <td className="py-3 text-slate-500">{row.date}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid lg:grid-cols-2 gap-8">

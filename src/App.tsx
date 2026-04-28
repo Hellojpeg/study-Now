@@ -95,6 +95,27 @@ const App: React.FC = () => {
           if (gameState === QuizState.LANDING) {
              setGameState(userData.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD);
           }
+        } else {
+          const fallbackRole = firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT';
+          const fallbackUser: User = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email || '',
+            role: fallbackRole,
+          };
+
+          await setDoc(doc(db, 'users', firebaseUser.uid), {
+            id: fallbackUser.id,
+            uid: fallbackUser.id,
+            name: fallbackUser.name,
+            email: fallbackUser.email,
+            role: fallbackUser.role,
+          }, { merge: true });
+
+          setUser(fallbackUser);
+          if (gameState === QuizState.LANDING) {
+            setGameState(fallbackUser.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD);
+          }
         }
       } else {
         setUser(null);
@@ -106,29 +127,6 @@ const App: React.FC = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [gameState, currentQuestionIndex, activeSubject]);
-
-  useEffect(() => {
-    if (gameState === QuizState.FINISHED && user) {
-        const saveScore = async () => {
-            try {
-          const authUid = auth.currentUser?.uid;
-          if (!authUid) return;
-                await addDoc(collection(db, 'scores'), {
-            userId: authUid,
-                    subjectId: activeSubject,
-                    score: score,
-                    totalQuestions: gameQuestions.length,
-                    missedQuestions: missedQuestions,
-                    timestamp: serverTimestamp()
-                });
-                console.log("Score saved successfully");
-            } catch (err) {
-                console.error("Error saving score:", err);
-            }
-        };
-        saveScore();
-    }
-  }, [gameState, user, score, activeSubject, gameQuestions.length, missedQuestions]);
 
   const handleLandingSelect = (subject: SubjectId) => {
     setActiveSubject(subject);
@@ -239,6 +237,52 @@ const App: React.FC = () => {
     setEnergy(0);
     setCombo(0);
     setGameQuestions([]);
+  };
+
+  const createConfirmationCode = (firstName: string, lastName: string, period: string) => {
+    const first = firstName.replace(/[^a-zA-Z]/g, '').slice(0, 1).toUpperCase() || 'X';
+    const last = lastName.replace(/[^a-zA-Z]/g, '').slice(0, 1).toUpperCase() || 'X';
+    const per = period.replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() || 'P00';
+    const stamp = Date.now().toString(36).toUpperCase().slice(-6);
+    return `SN-${first}${last}-${per}-${stamp}`;
+  };
+
+  const handleSubmitQuizResult = async (payload: { firstName: string; lastName: string; period: string }) => {
+    const authUid = auth.currentUser?.uid;
+    if (!authUid) {
+      throw new Error('Please sign in before generating a confirmation code so your teacher can verify your result.');
+    }
+
+    const confirmationCode = createConfirmationCode(payload.firstName, payload.lastName, payload.period);
+    const percentage = Math.round((score / Math.max(gameQuestions.length, 1)) * 100);
+
+    await addDoc(collection(db, 'scores'), {
+      userId: authUid,
+      subjectId: activeSubject,
+      score,
+      totalQuestions: gameQuestions.length,
+      missedQuestions,
+      studentFirstName: payload.firstName,
+      studentLastName: payload.lastName,
+      period: payload.period,
+      confirmationCode,
+      timestamp: serverTimestamp(),
+    });
+
+    await addDoc(collection(db, 'quizSubmissions'), {
+      userId: authUid,
+      subjectId: activeSubject,
+      score,
+      totalQuestions: gameQuestions.length,
+      percentage,
+      studentFirstName: payload.firstName,
+      studentLastName: payload.lastName,
+      period: payload.period,
+      confirmationCode,
+      timestamp: serverTimestamp(),
+    });
+
+    return confirmationCode;
   };
 
   const handleHomeClick = () => {
@@ -380,6 +424,7 @@ const App: React.FC = () => {
           result={{ score, totalQuestions: gameQuestions.length, missedQuestions }}
           allQuestions={currentQuiz.questions} 
           onRestart={handleRestart}
+          onSubmitResult={handleSubmitQuizResult}
         />
       );
     }
@@ -400,7 +445,7 @@ const App: React.FC = () => {
                     <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
                         <BookOpen className="w-6 h-6" />
                     </div>
-                    <span>Excell.AI</span>
+                    <span>Study Now</span>
                 </button>
 
                 {gameState !== QuizState.LANDING && gameState !== QuizState.DASHBOARD && gameState !== QuizState.TEACHER_DASHBOARD && (

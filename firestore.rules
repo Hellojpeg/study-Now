@@ -55,6 +55,30 @@ service cloud.firestore {
              data.subjectId is string;
     }
 
+    function isValidSubmission(data) {
+      return data.keys().hasAll([
+        'userId',
+        'subjectId',
+        'score',
+        'totalQuestions',
+        'percentage',
+        'studentFirstName',
+        'studentLastName',
+        'period',
+        'confirmationCode',
+        'timestamp'
+      ]) &&
+      data.userId == request.auth.uid &&
+      data.score is number &&
+      data.totalQuestions is number &&
+      data.percentage is number &&
+      data.subjectId is string &&
+      data.studentFirstName is string && data.studentFirstName.size() > 0 && data.studentFirstName.size() <= 60 &&
+      data.studentLastName is string && data.studentLastName.size() > 0 && data.studentLastName.size() <= 60 &&
+      data.period is string && data.period.size() > 0 && data.period.size() <= 20 &&
+      data.confirmationCode is string && data.confirmationCode.size() >= 8 && data.confirmationCode.size() <= 40;
+    }
+
     // Rules
     match /users/{userId} {
       // Users can read their own profile, or teachers can read all students
@@ -77,6 +101,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidScore(request.resource.data);
       
       // Scores are immutable
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /quizSubmissions/{submissionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidSubmission(request.resource.data);
       allow update: if false;
       allow delete: if isAdmin();
     }

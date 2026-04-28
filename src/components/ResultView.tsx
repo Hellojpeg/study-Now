@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { QuizResult, Question } from '../types';
 import { RotateCcw, Award, AlertTriangle, BookOpenCheck } from 'lucide-react';
 
@@ -6,10 +6,17 @@ interface ResultViewProps {
   result: QuizResult;
   allQuestions: Question[];
   onRestart: () => void;
+    onSubmitResult: (payload: { firstName: string; lastName: string; period: string }) => Promise<string>;
 }
 
-const ResultView: React.FC<ResultViewProps> = ({ result, allQuestions, onRestart }) => {
+const ResultView: React.FC<ResultViewProps> = ({ result, allQuestions, onRestart, onSubmitResult }) => {
   const percentage = Math.round((result.score / result.totalQuestions) * 100);
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [period, setPeriod] = useState('');
+    const [confirmationCode, setConfirmationCode] = useState<string | null>(null);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
   
   let gradeColor = 'text-red-500';
   let gradeBg = 'bg-red-50';
@@ -28,6 +35,29 @@ const ResultView: React.FC<ResultViewProps> = ({ result, allQuestions, onRestart
     gradeBg = 'bg-amber-50';
     message = "Getting there, review the weak spots.";
   }
+
+    const handleGenerateCode = async () => {
+        setSubmitError(null);
+
+        if (!firstName.trim() || !lastName.trim() || !period.trim()) {
+            setSubmitError('Enter first name, last name, and period to generate your confirmation code.');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            const code = await onSubmitResult({
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                period: period.trim(),
+            });
+            setConfirmationCode(code);
+        } catch (error: any) {
+            setSubmitError(error?.message || 'Could not generate a confirmation code. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
   return (
     <div className="max-w-3xl mx-auto p-6 pb-12">
@@ -57,6 +87,61 @@ const ResultView: React.FC<ResultViewProps> = ({ result, allQuestions, onRestart
 
         {/* Review Section */}
         <div className="p-8">
+                        <div className="mb-8 p-5 rounded-2xl border border-indigo-100 bg-indigo-50/50">
+                                <h3 className="text-lg font-bold text-slate-800 mb-3">Submit For Teacher Verification</h3>
+                                <p className="text-sm text-slate-600 mb-4">
+                                    Enter your first name, last name, and class period. A confirmation code will be generated after submission.
+                                </p>
+
+                                <div className="grid md:grid-cols-3 gap-3">
+                                        <input
+                                            type="text"
+                                            value={firstName}
+                                            onChange={(e) => setFirstName(e.target.value)}
+                                            placeholder="First name"
+                                            className="w-full p-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            disabled={!!confirmationCode}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={lastName}
+                                            onChange={(e) => setLastName(e.target.value)}
+                                            placeholder="Last name"
+                                            className="w-full p-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            disabled={!!confirmationCode}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={period}
+                                            onChange={(e) => setPeriod(e.target.value)}
+                                            placeholder="Period (ex: 3rd)"
+                                            className="w-full p-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            disabled={!!confirmationCode}
+                                        />
+                                </div>
+
+                                <div className="mt-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+                                        <button
+                                            type="button"
+                                            onClick={handleGenerateCode}
+                                            disabled={isSubmitting || !!confirmationCode}
+                                            className="px-5 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:bg-slate-400 transition-colors"
+                                        >
+                                            {confirmationCode ? 'Code Generated' : (isSubmitting ? 'Generating...' : 'Generate Confirmation Code')}
+                                        </button>
+
+                                        {confirmationCode && (
+                                            <div className="px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-mono font-bold tracking-wide">
+                                                Code: {confirmationCode}
+                                            </div>
+                                        )}
+                                </div>
+
+                                {submitError && (
+                                    <p className="mt-3 text-sm text-red-600 font-medium">{submitError}</p>
+                                )}
+                        </div>
+
             <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                 {result.missedQuestions.length > 0 ? (
                     <>

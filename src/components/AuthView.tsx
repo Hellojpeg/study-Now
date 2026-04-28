@@ -214,7 +214,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg">
                            <BookOpen className="w-6 h-6 text-white" />
                        </div>
-                       <span className="font-bold text-xl tracking-tight">Excell.AI</span>
+                       <span className="font-bold text-xl tracking-tight">Study Now</span>
                    </div>
                    <h1 className="text-4xl md:text-5xl font-black leading-tight mb-6">
                        {mode === 'LOGIN' ? 'Welcome back!' : 'Join the class.'}
@@ -225,7 +225,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                          : 'Create an account to track progress, join classes, and compete.'}
                    </p>
                </div>
-               <div className="text-sm text-slate-500">© 2026 Excell.AI</div>
+               <div className="text-sm text-slate-500">© 2026 Study Now</div>
            </div>
 
            {/* Right: Form */}
