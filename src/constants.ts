@@ -18,10 +18,10 @@ export const MOCK_STUDENTS: User[] = [
 
 // --- DASHBOARD DATA ---
 export const MOCK_ASSIGNMENTS: Assignment[] = [
-    { id: 'a1', title: 'Ancient Greece Midterm Prep', subject: 'world-history', type: 'QUIZ', dueDate: 'Today', status: 'PENDING', points: 100, linkMode: 'standard' },
-    { id: 'a2', title: 'Read: Rise of Democracy', subject: 'world-history', type: 'READING', dueDate: 'Tomorrow', status: 'PENDING', points: 50, linkMode: 'textbook' },
+    { id: 'a1', title: 'Start of Course Assessment', subject: 'civics', type: 'QUIZ', dueDate: 'Today', status: 'PENDING', points: 100, linkMode: 'standard' },
+    { id: 'a2', title: 'Read: The Constitution', subject: 'civics', type: 'READING', dueDate: 'Tomorrow', status: 'PENDING', points: 50, linkMode: 'textbook' },
     { id: 'a4', title: 'Civics EOC Practice', subject: 'civics', type: 'QUIZ', dueDate: 'Next Week', status: 'PENDING', points: 100, linkMode: 'standard' },
-    { id: 'a5', title: 'Principles of Constitution', subject: 'us-history', type: 'QUIZ', dueDate: 'Friday', status: 'PENDING', points: 200, linkMode: 'standard' }
+    { id: 'a5', title: 'Principles of Constitution', subject: 'civics', type: 'QUIZ', dueDate: 'Friday', status: 'PENDING', points: 200, linkMode: 'standard' }
 ];
 
 export const MOCK_WEEKLY_TASKS: WeeklyTask[] = [
@@ -88,23 +88,11 @@ import { CIV_EOC_NEW as CIV_EOC } from "./civics_pdf_quiz";
 // --- APP DATA CONFIG ---
 
 export const QUIZZES: Record<SubjectId, QuizData> = {
-  'world-history': {
-    id: 'world-history',
-    title: 'World History',
-    description: 'Journey from prehistory to the ancient world.',
-    questions: [...WH_MIDTERM, ...GREECE_QUESTIONS]
-  },
   'civics': {
     id: 'civics',
     title: 'Civics',
     description: 'Master the MJ Civics End-of-Course Practice Exam.',
     questions: CIV_EOC
-  },
-  'us-history': {
-    id: 'us-history',
-    title: 'US History',
-    description: 'Principles of the Constitution and early America.',
-    questions: US_MIDTERM
   }
 };
 

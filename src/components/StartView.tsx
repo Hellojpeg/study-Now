@@ -34,7 +34,6 @@ const StartView: React.FC<StartViewProps> = ({
   const getHeaderIcon = () => {
     switch(subjectId) {
       case 'civics': return <Landmark className="w-10 h-10 text-white" />;
-      case 'us-history': return <Flag className="w-10 h-10 text-white" />;
       default: return <History className="w-10 h-10 text-white" />;
     }
   };
@@ -42,7 +41,6 @@ const StartView: React.FC<StartViewProps> = ({
   const getHeaderColor = () => {
     switch(subjectId) {
       case 'civics': return 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/30';
-      case 'us-history': return 'bg-gradient-to-br from-red-500 to-rose-600 shadow-red-500/30';
       default: return 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30';
     }
   };

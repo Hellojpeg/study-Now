@@ -35,7 +35,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 const App: React.FC = () => {
-  const [activeSubject, setActiveSubject] = useState<SubjectId>('world-history');
+  const [activeSubject, setActiveSubject] = useState<SubjectId>('civics');
   const [gameState, setGameState] = useState<QuizState>(QuizState.LANDING);
   const [gameMode, setGameMode] = useState<GameMode>('standard');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -282,7 +282,7 @@ const App: React.FC = () => {
     }
 
     if (gameState === QuizState.DASHBOARD) {
-        return <DashboardView onStartAssignment={handleDashboardAssignment} userName={user?.name || "Student"} />;
+        return <DashboardView onStartAssignment={handleDashboardAssignment} user={user!} />;
     }
 
     if (gameState === QuizState.TEACHER_DASHBOARD && user?.role === 'TEACHER') {
@@ -383,9 +383,7 @@ const App: React.FC = () => {
 
                 {gameState !== QuizState.LANDING && gameState !== QuizState.DASHBOARD && gameState !== QuizState.TEACHER_DASHBOARD && (
                   <div className="hidden md:flex items-center gap-1 bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50">
-                      <button onClick={() => handleSubjectChange('world-history')} className={getTabStyle('world-history')}>World History</button>
                       <button onClick={() => handleSubjectChange('civics')} className={getTabStyle('civics')}>Civics</button>
-                      <button onClick={() => handleSubjectChange('us-history')} className={getTabStyle('us-history')}>US History</button>
                   </div>
                 )}
             </div>

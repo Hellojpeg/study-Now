@@ -31,7 +31,7 @@ export interface QuizResult {
   missedQuestions: number[]; // IDs of missed questions
 }
 
-export type SubjectId = 'world-history' | 'civics' | 'us-history';
+export type SubjectId = 'civics';
 
 export interface QuizData {
   id: SubjectId;

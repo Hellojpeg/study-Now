@@ -1,4 +1,6 @@
+const fs = require('fs');
 
+const content = `
 import React, { useState, useEffect } from 'react';
 import { SubjectId, GameMode, Assignment, WeeklyTask, User } from '../types';
 import { MOCK_ASSIGNMENTS, MOCK_WEEKLY_TASKS, QUIZZES } from '../constants';
@@ -108,7 +110,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, user }
           <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl shadow-sm border border-slate-100">
               <div className="text-right">
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Overall Avg</div>
-                  <div className="text-2xl font-black text-emerald-500">{averageScore !== null ? `${averageScore}%` : '--'}</div>
+                  <div className="text-2xl font-black text-emerald-500">{averageScore !== null ? \`\${averageScore}%\` : '--'}</div>
               </div>
               <div className="h-10 w-px bg-slate-100"></div>
               <div className="text-right">
@@ -140,7 +142,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, user }
                                       <div className="font-bold text-slate-700 capitalize">{test.subject} Quiz</div>
                                       <div className="text-xs text-slate-400 font-medium">{test.date}</div>
                                   </div>
-                                  <div className={`font-black text-lg ${test.percentage >= 80 ? 'text-emerald-500' : test.percentage >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
+                                  <div className={\`font-black text-lg \${test.percentage >= 80 ? 'text-emerald-500' : test.percentage >= 60 ? 'text-yellow-500' : 'text-red-500'}\`}>
                                       {test.score}/{test.total}
                                   </div>
                               </div>
@@ -197,7 +199,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, user }
                       {assignments.map(assign => (
                           <div key={assign.id} className="group flex flex-col md:flex-row items-center justify-between p-5 rounded-2xl border-2 border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all gap-4">
                               <div className="flex items-center gap-4 w-full md:w-auto">
-                                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md ${assign.subject === 'civics' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
+                                  <div className={\`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md \${assign.subject === 'civics' ? 'bg-blue-500' : 'bg-emerald-500'}\`}>
                                       {assign.type === 'QUIZ' ? <BrainCircuit className="w-6 h-6" /> : assign.type === 'READING' ? <BookOpen className="w-6 h-6" /> : <Star className="w-6 h-6" />}
                                   </div>
                                   <div>
@@ -236,7 +238,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, user }
                         onClick={() => onStartAssignment(action.mode as GameMode, 'civics')}
                         className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-1 transition-all flex flex-col items-center justify-center gap-3 h-32"
                       >
-                          <div className={`p-3 rounded-full ${action.color}`}>
+                          <div className={\`p-3 rounded-full \${action.color}\`}>
                               <action.icon className="w-6 h-6" />
                           </div>
                           <span className="font-bold text-slate-700 text-sm">{action.label}</span>
@@ -250,3 +252,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ onStartAssignment, user }
 };
 
 export default DashboardView;
+`;
+
+fs.writeFileSync('/workspaces/study-Now/src/components/DashboardView.tsx', content);
