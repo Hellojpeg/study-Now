@@ -378,7 +378,7 @@ const App: React.FC = () => {
                     <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
                         <BookOpen className="w-6 h-6" />
                     </div>
-                    <span>Mr. Gomez's Class</span>
+                    <span>Master your Exams</span>
                 </button>
 
                 {gameState !== QuizState.LANDING && gameState !== QuizState.DASHBOARD && gameState !== QuizState.TEACHER_DASHBOARD && (
