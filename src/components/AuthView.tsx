@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserRole, User } from '../types';
 import { BookOpen, UserCircle, GraduationCap, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { auth, db } from '../firebase';
@@ -7,7 +7,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   updateProfile,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -25,6 +26,83 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const toAppUser = (raw: any, fallback: { uid: string; name: string; email: string; role: UserRole }): User => ({
+    id: raw?.id || raw?.uid || fallback.uid,
+    name: raw?.name || fallback.name,
+    email: raw?.email || fallback.email,
+    role: (raw?.role as UserRole) || fallback.role,
+    avatar: raw?.avatar,
+  });
+
+  const toFirestoreUser = (user: User): Record<string, unknown> => ({
+    id: user.id,
+    uid: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    ...(user.avatar ? { avatar: user.avatar } : {}),
+  });
+
+  const upsertGoogleUser = async (firebaseUser: any): Promise<User> => {
+    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+
+    if (userDoc.exists()) {
+      const userData = toAppUser(userDoc.data(), {
+        uid: firebaseUser.uid,
+        name: firebaseUser.displayName || 'Google User',
+        email: firebaseUser.email || '',
+        role: 'STUDENT',
+      });
+
+      if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
+        userData.role = 'TEACHER';
+        await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(userData), { merge: true });
+      }
+
+      return userData;
+    }
+
+    const newUser: User = {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || 'Google User',
+      email: firebaseUser.email || '',
+      role: firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT'
+    };
+
+    await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(newUser));
+    return newUser;
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const completeRedirectLogin = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result?.user || !isMounted) return;
+
+        setLoading(true);
+        const appUser = await upsertGoogleUser(result.user);
+        if (isMounted) onLogin(appUser);
+      } catch (err: any) {
+        console.error('Google Redirect Auth Error:', err);
+        if (!isMounted) return;
+        if (err.code === 'auth/unauthorized-domain') {
+          setError('Google Sign-In is blocked because this domain is not yet authorized in Firebase. Add mrgomez.online in Firebase Authentication > Settings > Authorized domains.');
+        } else if (err.code === 'permission-denied' || err.code === 'firestore/permission-denied') {
+          setError('Google sign-in succeeded but your user profile could not be saved. Please try again.');
+        } else {
+          setError('Google Sign-In failed. Please try again.');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    completeRedirectLogin();
+    return () => { isMounted = false; };
+  }, [onLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +125,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
         };
 
         // Save to Firestore
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+        await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(newUser));
         
         onLogin(newUser);
       } else {
@@ -58,10 +136,15 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         
         if (userDoc.exists()) {
-          const userData = userDoc.data() as User;
+          const userData = toAppUser(userDoc.data(), {
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email || '',
+            role: 'STUDENT',
+          });
           if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
             userData.role = 'TEACHER';
-            await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+            await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(userData), { merge: true });
           }
           onLogin(userData);
         } else {
@@ -86,6 +169,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
         message = "Password should be at least 6 characters.";
       } else if (err.code === 'auth/invalid-email') {
         message = "Please enter a valid email address.";
+      } else if (err.code === 'permission-denied' || err.code === 'firestore/permission-denied') {
+        message = "Your account is signed in, but database access was denied. Please refresh and try again.";
       }
       setError(message);
     } finally {
@@ -98,34 +183,18 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
-
-      // Check if user exists in Firestore
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as User;
-        if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
-          userData.role = 'TEACHER';
-          await setDoc(doc(db, 'users', firebaseUser.uid), userData);
-        }
-        onLogin(userData);
-      } else {
-        // Create new user entry for Google users
-        const newUser: User = {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || 'Google User',
-          email: firebaseUser.email || '',
-          role: firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT'
-        };
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-        onLogin(newUser);
-      }
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
       console.error("Google Auth Error:", err);
-      setError("Google Sign-In failed. Please try again.");
+      if (err.code === 'auth/unauthorized-domain') {
+        setError("Google Sign-In is blocked because this domain is not yet authorized in Firebase. Add mrgomez.online in Firebase Authentication > Settings > Authorized domains.");
+      } else if (err.code === 'permission-denied' || err.code === 'firestore/permission-denied') {
+        setError("Google sign-in succeeded but your user profile could not be saved. Please try again.");
+      } else {
+        setError("Google Sign-In failed. Please try again.");
+      }
     } finally {
+      // Redirect will leave the page; if it does not, stop spinner.
       setLoading(false);
     }
   };

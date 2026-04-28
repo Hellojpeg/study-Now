@@ -69,7 +69,14 @@ const App: React.FC = () => {
       if (firebaseUser) {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         if (userDoc.exists()) {
-          const userData = userDoc.data() as User;
+          const raw = userDoc.data() as any;
+          const userData: User = {
+            id: raw?.id || raw?.uid || firebaseUser.uid,
+            name: raw?.name || firebaseUser.displayName || 'User',
+            email: raw?.email || firebaseUser.email || '',
+            role: raw?.role || 'STUDENT',
+            avatar: raw?.avatar,
+          };
           setUser(userData);
           // If we are on landing, move to dashboard
           if (gameState === QuizState.LANDING) {
@@ -91,8 +98,10 @@ const App: React.FC = () => {
     if (gameState === QuizState.FINISHED && user) {
         const saveScore = async () => {
             try {
+          const authUid = auth.currentUser?.uid;
+          if (!authUid) return;
                 await addDoc(collection(db, 'scores'), {
-                    userId: user.id,
+            userId: authUid,
                     subjectId: activeSubject,
                     score: score,
                     totalQuestions: gameQuestions.length,

@@ -221,10 +221,6 @@ const QuizView: React.FC<QuizViewProps> = ({
 
       const sources: Array<() => Promise<string | null>> = [
         async () => {
-          const data = await fetchWithTimeout(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`);
-          return extractDictionaryApiDefinition(data);
-        },
-        async () => {
           const proxiedUrl = encodeURIComponent(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`);
           const data = await fetchWithTimeout(`https://api.allorigins.win/raw?url=${proxiedUrl}`);
           return extractDictionaryApiDefinition(data);
