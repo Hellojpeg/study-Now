@@ -58,7 +58,12 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         
         if (userDoc.exists()) {
-          onLogin(userDoc.data() as User);
+          const userData = userDoc.data() as User;
+          if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
+            userData.role = 'TEACHER';
+            await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+          }
+          onLogin(userData);
         } else {
           // Fallback if doc doesn't exist (e.g. manual delete from console)
           const fallbackUser: User = {
@@ -100,14 +105,19 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
       
       if (userDoc.exists()) {
-        onLogin(userDoc.data() as User);
+        const userData = userDoc.data() as User;
+        if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
+          userData.role = 'TEACHER';
+          await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+        }
+        onLogin(userData);
       } else {
         // Create new user entry for Google users
         const newUser: User = {
           id: firebaseUser.uid,
           name: firebaseUser.displayName || 'Google User',
           email: firebaseUser.email || '',
-          role: 'STUDENT' // Default role
+          role: firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT'
         };
         await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
         onLogin(newUser);
