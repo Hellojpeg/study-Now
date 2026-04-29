@@ -296,26 +296,6 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
                        />
                    </div>
 
-                   <div className="pt-2">
-                       <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">I am a...</label>
-                       <div className="grid grid-cols-2 gap-4">
-                           <button 
-                             type="button"
-                             onClick={() => setRole('STUDENT')}
-                             className={`p-4 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition-all ${role === 'STUDENT' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
-                           >
-                               <UserCircle className="w-5 h-5" /> Student
-                           </button>
-                           <button 
-                             type="button"
-                             onClick={() => setRole('TEACHER')}
-                             className={`p-4 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition-all ${role === 'TEACHER' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
-                           >
-                               <GraduationCap className="w-5 h-5" /> Teacher
-                           </button>
-                       </div>
-                   </div>
-
                    <button 
                        type="submit" 
                        disabled={loading}
