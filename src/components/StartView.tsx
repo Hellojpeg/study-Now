@@ -12,7 +12,6 @@ interface StartViewProps {
   onStart: (mode: GameMode, scope: string) => void;
   isAdmin?: boolean;
   hiddenModes?: GameMode[];
-  onToggleGameVisibility?: (mode: GameMode) => void;
 }
 
 type ModeCard = {
@@ -68,8 +67,6 @@ const ARCADE_MODES: ModeCard[] = [
   { id: 'checkers', icon: Circle, color: 'text-purple-500', bg: 'bg-purple-50', title: 'Checkers' },
 ];
 
-const MANAGED_MODES: GameMode[] = Array.from(new Set([...FEATURED_MODES.map(m => m.id), ...ARCADE_MODES.map(m => m.id)]));
-
 const StartView: React.FC<StartViewProps> = ({ 
   subjectId, 
   title, 
@@ -78,7 +75,6 @@ const StartView: React.FC<StartViewProps> = ({
   onStart,
   isAdmin = false,
   hiddenModes = [],
-  onToggleGameVisibility,
 }) => {
   const [selectedScope, setSelectedScope] = useState(''); // Default empty to enforce choice
   const [availableUnits, setAvailableUnits] = useState<string[]>([]);
@@ -121,9 +117,6 @@ const StartView: React.FC<StartViewProps> = ({
       }
       if (!isAdmin && hiddenSet.has(mode)) {
         return `${baseClass} hidden`;
-      }
-      if (isAdmin && hiddenSet.has(mode)) {
-        return `${baseClass} opacity-60 border-dashed border-rose-300`;
       }
       return baseClass;
   };
@@ -187,27 +180,6 @@ const StartView: React.FC<StartViewProps> = ({
              </div>
          )}
       </div>
-
-      {isAdmin && (
-        <div className="w-full max-w-4xl mb-4 p-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 shrink-0">
-          <div className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-700 mb-2">Admin Game Visibility</div>
-          <div className="flex flex-wrap gap-2">
-            {MANAGED_MODES.map((mode) => {
-              const isHidden = hiddenSet.has(mode);
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => onToggleGameVisibility?.(mode)}
-                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${isHidden ? 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50' : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'}`}
-                >
-                  {isHidden ? 'Show' : 'Hide'} {mode}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* SCROLLABLE MODES AREA to prevent viewport overflow */}
       <div className="w-full overflow-y-auto pr-2 custom-scrollbar flex-grow">

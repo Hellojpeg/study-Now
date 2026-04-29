@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { User } from '../types';
+import { GameMode, User } from '../types';
 import { MOCK_CLASSES } from '../constants';
 import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X, Calculator } from 'lucide-react';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
@@ -8,7 +8,25 @@ import { db } from '../firebase';
 
 interface TeacherDashboardViewProps {
   user: User;
+    hiddenModes: GameMode[];
+    onToggleGameVisibility: (mode: GameMode) => void;
 }
+
+const MANAGED_GAME_MODES: GameMode[] = [
+    'standard',
+    'classroyale',
+    'studysnake',
+    'jeopardy',
+    'speed',
+    'boss',
+    'commerce',
+    'towerdefense',
+    'millionaire',
+    'connect4',
+    'battleship',
+    'risk',
+    'checkers',
+];
 
 type QuestionType = 'MCQ' | 'SELECT_ALL' | 'TRUE_FALSE' | 'NUMBER' | 'SHORT' | 'ESSAY';
 
@@ -40,7 +58,7 @@ interface SubmissionRecord {
     date: string;
 }
 
-const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => {
+const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user, hiddenModes, onToggleGameVisibility }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'CLASSES' | 'STUDENTS' | 'ASSESSMENTS' | 'SETTINGS'>('DASHBOARD');
   
@@ -348,6 +366,28 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user }) => 
                                 <BarChart2 className="w-4 h-4" /> Avg. Performance
                             </div>
                             <div className="text-4xl font-black text-emerald-500">88%</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-slate-800">Game Visibility Controls</h2>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Admin Only</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {MANAGED_GAME_MODES.map((mode) => {
+                                const isHidden = hiddenModes.includes(mode);
+                                return (
+                                    <button
+                                        key={mode}
+                                        type="button"
+                                        onClick={() => onToggleGameVisibility(mode)}
+                                        className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${isHidden ? 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50' : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'}`}
+                                    >
+                                        {isHidden ? 'Show' : 'Hide'} {mode}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

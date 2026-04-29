@@ -451,7 +451,13 @@ const App: React.FC = () => {
     }
 
     if (gameState === QuizState.TEACHER_DASHBOARD && user?.role === 'TEACHER') {
-        return <TeacherDashboardView user={user} />;
+        return (
+          <TeacherDashboardView
+            user={user}
+            hiddenModes={hiddenGameModes}
+            onToggleGameVisibility={handleToggleGameVisibility}
+          />
+        );
     }
 
     if (gameState === QuizState.MULTIPLAYER) {
@@ -468,7 +474,6 @@ const App: React.FC = () => {
           onStart={handleStart}
           isAdmin={isAdminUser}
           hiddenModes={hiddenGameModes}
-          onToggleGameVisibility={handleToggleGameVisibility}
         />
       );
     }
