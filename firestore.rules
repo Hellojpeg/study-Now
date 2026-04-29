@@ -102,7 +102,7 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
                       (
                         request.resource.data.role == 'STUDENT' ||
-                        (request.resource.data.role == 'TEACHER' && isAdmin()) ||
+                        request.resource.data.role == 'TEACHER' ||
                         (request.resource.data.role == 'ADMIN' && isAdmin())
                       );
       

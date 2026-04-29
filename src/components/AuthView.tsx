@@ -7,8 +7,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   updateProfile,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -122,30 +121,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
     return newUser;
   };
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const completeRedirectLogin = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (!result?.user || !isMounted) return;
-
-        setLoading(true);
-        const appUser = await upsertGoogleUser(result.user);
-        if (isMounted) onLogin(appUser);
-      } catch (err: any) {
-        logAuthIssue('Google Redirect Auth Error', err);
-        if (!isMounted) return;
-        setError(mapAuthErrorToMessage(err, 'Google Sign-In failed. Please try again.'));
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    completeRedirectLogin();
-    return () => { isMounted = false; };
-  }, [onLogin]);
-
+  // No need for getRedirectResult useEffect since we moved to Popup
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -214,12 +190,13 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const appUser = await upsertGoogleUser(result.user);
+      onLogin(appUser);
     } catch (err: any) {
       logAuthIssue('Google Auth Error', err);
       setError(mapAuthErrorToMessage(err, 'Google Sign-In failed. Please try again.'));
     } finally {
-      // Redirect will leave the page; if it does not, stop spinner.
       setLoading(false);
     }
   };

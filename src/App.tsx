@@ -120,6 +120,7 @@ const App: React.FC = () => {
           }
 
           setUser(userData);
+          setShowAuth(false);
           setGameState((prev) => prev === QuizState.LANDING
             ? ((userData.role === 'TEACHER' || userData.role === 'ADMIN') ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
             : prev);
@@ -143,6 +144,7 @@ const App: React.FC = () => {
         }, { merge: true });
 
         setUser(fallbackUser);
+        setShowAuth(false);
         setGameState((prev) => prev === QuizState.LANDING
           ? ((fallbackUser.role === 'TEACHER' || fallbackUser.role === 'ADMIN') ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
           : prev);
@@ -160,6 +162,7 @@ const App: React.FC = () => {
         };
 
         setUser(fallbackUser);
+        setShowAuth(false);
         setGameState((prev) => prev === QuizState.LANDING
           ? ((fallbackUser.role === 'TEACHER' || fallbackUser.role === 'ADMIN') ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
           : prev);
