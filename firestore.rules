@@ -117,5 +117,10 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isAdmin();
     }
+
+    match /appSettings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() && docId == 'gameVisibility';
+    }
   }
 }

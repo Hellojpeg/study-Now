@@ -32,7 +32,23 @@ import { QUIZZES, CIVICS_COURSE_CONTENT, CIVICS_MODULES, WORLD_HISTORY_COURSE_CO
 import { BookOpen, Users, LogIn, UserCircle, LayoutDashboard, LogOut } from 'lucide-react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, addDoc, collection, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+
+const MANAGED_GAME_MODES: GameMode[] = [
+  'standard',
+  'classroyale',
+  'studysnake',
+  'jeopardy',
+  'speed',
+  'boss',
+  'commerce',
+  'towerdefense',
+  'millionaire',
+  'connect4',
+  'battleship',
+  'risk',
+  'checkers',
+];
 
 const App: React.FC = () => {
   const [activeSubject, setActiveSubject] = useState<SubjectId>('civics');
@@ -49,6 +65,7 @@ const App: React.FC = () => {
   // Auth State
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [hiddenGameModes, setHiddenGameModes] = useState<GameMode[]>([]);
 
   const currentQuiz = QUIZZES[activeSubject];
 
@@ -146,6 +163,62 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const settingsRef = doc(db, 'appSettings', 'gameVisibility');
+    const unsubscribe = onSnapshot(settingsRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setHiddenGameModes([]);
+        return;
+      }
+
+      const rawHiddenModes = snapshot.data()?.hiddenModes;
+      if (!Array.isArray(rawHiddenModes)) {
+        setHiddenGameModes([]);
+        return;
+      }
+
+      const safeHiddenModes = rawHiddenModes
+        .filter((mode: unknown): mode is GameMode =>
+          typeof mode === 'string' && MANAGED_GAME_MODES.includes(mode as GameMode)
+        );
+
+      setHiddenGameModes(safeHiddenModes);
+    }, () => {
+      setHiddenGameModes([]);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const isAdminUser = Boolean(
+    user && (user.role === 'TEACHER' || user.email?.toLowerCase() === 'jpgomezmedia@gmail.com')
+  );
+
+  const isHiddenMode = (mode: GameMode) => hiddenGameModes.includes(mode);
+
+  const handleToggleGameVisibility = async (mode: GameMode) => {
+    if (!isAdminUser || !auth.currentUser) {
+      return;
+    }
+
+    const nextHiddenModes = hiddenGameModes.includes(mode)
+      ? hiddenGameModes.filter((item) => item !== mode)
+      : [...hiddenGameModes, mode];
+
+    setHiddenGameModes(nextHiddenModes);
+
+    try {
+      await setDoc(doc(db, 'appSettings', 'gameVisibility'), {
+        hiddenModes: nextHiddenModes,
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser.uid,
+      }, { merge: true });
+    } catch {
+      setHiddenGameModes(hiddenGameModes);
+      alert('Could not update game visibility. Please try again.');
+    }
+  };
+
+  useEffect(() => {
     window.scrollTo(0, 0);
   }, [gameState, currentQuestionIndex, activeSubject]);
 
@@ -208,6 +281,11 @@ const App: React.FC = () => {
   };
 
   const handleStart = (mode: GameMode, scope: string = 'ALL') => {
+    if (isHiddenMode(mode) && !isAdminUser) {
+      alert('This game mode is currently hidden by your teacher.');
+      return;
+    }
+
     if (['textbook', 'outline', 'modules', 'analysis'].includes(mode)) {
         setGameMode(mode);
         setGameState(QuizState.PLAYING);
@@ -387,7 +465,10 @@ const App: React.FC = () => {
           title={currentQuiz.title}
           description={currentQuiz.description}
           totalQuestions={currentQuiz.questions.length}
-          onStart={handleStart} 
+          onStart={handleStart}
+          isAdmin={isAdminUser}
+          hiddenModes={hiddenGameModes}
+          onToggleGameVisibility={handleToggleGameVisibility}
         />
       );
     }
