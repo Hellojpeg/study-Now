@@ -103,7 +103,7 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user, hidde
             }
         };
 
-        if (user.role === 'TEACHER') {
+        if (user.role === 'TEACHER' || user.role === 'ADMIN') {
             fetchRecentSubmissions();
         }
     }, [user.role]);

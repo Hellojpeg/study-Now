@@ -27,7 +27,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isTeacherEmail = (value?: string | null) => value?.toLowerCase() === 'jpgomezmedia@gmail.com';
+  const isAdminEmail = (value?: string | null) => value?.toLowerCase() === 'jpgomezmedia@gmail.com';
 
   const getErrorCode = (err: any): string => (typeof err?.code === 'string' ? err.code : '');
 
@@ -86,6 +86,11 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
     ...(user.avatar ? { avatar: user.avatar } : {}),
   });
 
+  const resolveRole = (email?: string | null, preferredRole: UserRole = 'STUDENT'): UserRole => {
+    if (isAdminEmail(email)) return 'ADMIN';
+    return preferredRole;
+  };
+
   const upsertGoogleUser = async (firebaseUser: any): Promise<User> => {
     const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
 
@@ -97,8 +102,9 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
         role: 'STUDENT',
       });
 
-      if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
-        userData.role = 'TEACHER';
+      const desiredRole = resolveRole(firebaseUser.email, userData.role);
+      if (userData.role !== desiredRole) {
+        userData.role = desiredRole;
         await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(userData), { merge: true });
       }
 
@@ -109,7 +115,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Google User',
       email: firebaseUser.email || '',
-      role: isTeacherEmail(firebaseUser.email) ? 'TEACHER' : 'STUDENT'
+      role: resolveRole(firebaseUser.email, 'STUDENT')
     };
 
     await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(newUser));
@@ -157,7 +163,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
           id: firebaseUser.uid,
           name: name,
           email: email,
-          role: isTeacherEmail(email) ? 'TEACHER' : role
+          role: resolveRole(email, role)
         };
 
         // Save to Firestore
@@ -178,8 +184,9 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
             email: firebaseUser.email || '',
             role: 'STUDENT',
           });
-          if (isTeacherEmail(firebaseUser.email) && userData.role !== 'TEACHER') {
-            userData.role = 'TEACHER';
+          const desiredRole = resolveRole(firebaseUser.email, userData.role);
+          if (userData.role !== desiredRole) {
+            userData.role = desiredRole;
             await setDoc(doc(db, 'users', firebaseUser.uid), toFirestoreUser(userData), { merge: true });
           }
           onLogin(userData);
@@ -189,7 +196,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
             id: firebaseUser.uid,
             name: firebaseUser.displayName || 'User',
             email: firebaseUser.email || '',
-            role: isTeacherEmail(firebaseUser.email) ? 'TEACHER' : 'STUDENT'
+            role: resolveRole(firebaseUser.email, 'STUDENT')
           };
           onLogin(fallbackUser);
         }

@@ -67,6 +67,12 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [hiddenGameModes, setHiddenGameModes] = useState<GameMode[]>([]);
 
+  const isAdminEmail = (email?: string | null) => email?.toLowerCase() === 'jpgomezmedia@gmail.com';
+  const resolveRole = (email?: string | null, preferredRole: User['role'] = 'STUDENT'): User['role'] => {
+    if (isAdminEmail(email)) return 'ADMIN';
+    return preferredRole;
+  };
+
   const currentQuiz = QUIZZES[activeSubject];
 
   // Dynamic Content Loading based on Subject
@@ -100,8 +106,9 @@ const App: React.FC = () => {
             avatar: raw?.avatar,
           };
 
-          if (firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' && userData.role !== 'TEACHER') {
-            userData.role = 'TEACHER';
+          const desiredRole = resolveRole(firebaseUser.email, userData.role);
+          if (userData.role !== desiredRole) {
+            userData.role = desiredRole;
             await setDoc(doc(db, 'users', firebaseUser.uid), {
               id: userData.id,
               uid: firebaseUser.uid,
@@ -114,12 +121,12 @@ const App: React.FC = () => {
 
           setUser(userData);
           setGameState((prev) => prev === QuizState.LANDING
-            ? (userData.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
+            ? ((userData.role === 'TEACHER' || userData.role === 'ADMIN') ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
             : prev);
           return;
         }
 
-        const fallbackRole = firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT';
+        const fallbackRole = resolveRole(firebaseUser.email, 'STUDENT');
         const fallbackUser: User = {
           id: firebaseUser.uid,
           name: firebaseUser.displayName || 'User',
@@ -137,14 +144,14 @@ const App: React.FC = () => {
 
         setUser(fallbackUser);
         setGameState((prev) => prev === QuizState.LANDING
-          ? (fallbackUser.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
+          ? ((fallbackUser.role === 'TEACHER' || fallbackUser.role === 'ADMIN') ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
           : prev);
       } catch (err: any) {
         if (import.meta.env.DEV) {
           console.warn('Auth profile sync warning:', err?.code || err?.message || err);
         }
 
-        const fallbackRole = firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT';
+        const fallbackRole = resolveRole(firebaseUser.email, 'STUDENT');
         const fallbackUser: User = {
           id: firebaseUser.uid,
           name: firebaseUser.displayName || 'User',
@@ -154,7 +161,7 @@ const App: React.FC = () => {
 
         setUser(fallbackUser);
         setGameState((prev) => prev === QuizState.LANDING
-          ? (fallbackUser.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
+          ? ((fallbackUser.role === 'TEACHER' || fallbackUser.role === 'ADMIN') ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
           : prev);
       }
     });
@@ -189,9 +196,8 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const isAdminUser = Boolean(
-    user && (user.role === 'TEACHER' || user.email?.toLowerCase() === 'jpgomezmedia@gmail.com')
-  );
+  const isAdminUser = Boolean(user && (user.role === 'ADMIN' || isAdminEmail(user.email)));
+  const isTeacherOrAdmin = Boolean(user && (user.role === 'TEACHER' || user.role === 'ADMIN' || isAdminEmail(user.email)));
 
   const isHiddenMode = (mode: GameMode) => hiddenGameModes.includes(mode);
 
@@ -386,7 +392,7 @@ const App: React.FC = () => {
 
   const handleHomeClick = () => {
     if (user) {
-        if (user.role === 'TEACHER') {
+      if (user.role === 'TEACHER' || user.role === 'ADMIN') {
             setGameState(QuizState.TEACHER_DASHBOARD);
         } else {
             setGameState(QuizState.DASHBOARD);
@@ -408,7 +414,7 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
       setUser(user);
       setShowAuth(false);
-      if (user.role === 'TEACHER') {
+      if (user.role === 'TEACHER' || user.role === 'ADMIN') {
           setGameState(QuizState.TEACHER_DASHBOARD);
       } else {
           setGameState(QuizState.DASHBOARD);
@@ -450,7 +456,7 @@ const App: React.FC = () => {
         return <DashboardView onStartAssignment={handleDashboardAssignment} user={user!} />;
     }
 
-    if (gameState === QuizState.TEACHER_DASHBOARD && user?.role === 'TEACHER') {
+    if (gameState === QuizState.TEACHER_DASHBOARD && isTeacherOrAdmin && user) {
         return (
           <TeacherDashboardView
             user={user}
@@ -472,7 +478,7 @@ const App: React.FC = () => {
           description={currentQuiz.description}
           totalQuestions={currentQuiz.questions.length}
           onStart={handleStart}
-          isAdmin={isAdminUser}
+          isAdmin={isTeacherOrAdmin}
           hiddenModes={hiddenGameModes}
         />
       );

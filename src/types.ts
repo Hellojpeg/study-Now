@@ -130,7 +130,7 @@ export interface AnalysisScenario {
 
 // --- Auth & User Types ---
 
-export type UserRole = 'STUDENT' | 'TEACHER';
+export type UserRole = 'STUDENT' | 'TEACHER' | 'ADMIN';
 
 export interface User {
   id: string;
