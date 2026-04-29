@@ -29,6 +29,46 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
 
   const isTeacherEmail = (value?: string | null) => value?.toLowerCase() === 'jpgomezmedia@gmail.com';
 
+  const getErrorCode = (err: any): string => (typeof err?.code === 'string' ? err.code : '');
+
+  const logAuthIssue = (context: string, err: any) => {
+    if (import.meta.env.DEV) {
+      console.warn(`${context}:`, getErrorCode(err) || err?.message || err);
+    }
+  };
+
+  const mapAuthErrorToMessage = (err: any, defaultMessage: string): string => {
+    const code = getErrorCode(err);
+    if (code === 'auth/unauthorized-domain') {
+      return 'Google Sign-In is blocked because this domain is not yet authorized in Firebase. Add mrgomez.online in Firebase Authentication > Settings > Authorized domains.';
+    }
+    if (code === 'permission-denied' || code === 'firestore/permission-denied') {
+      return 'Your account is signed in, but database access was denied. Please refresh and try again.';
+    }
+    if (code === 'auth/user-not-found' || code === 'auth/wrong-password') {
+      return 'Invalid email or password.';
+    }
+    if (code === 'auth/email-already-in-use') {
+      return 'This email is already registered.';
+    }
+    if (code === 'auth/weak-password') {
+      return 'Password should be at least 6 characters.';
+    }
+    if (code === 'auth/invalid-email') {
+      return 'Please enter a valid email address.';
+    }
+    if (code === 'auth/too-many-requests') {
+      return 'Too many attempts. Please wait a moment and try again.';
+    }
+    if (code === 'auth/network-request-failed') {
+      return 'Network error. Please check your connection and try again.';
+    }
+    if (code === 'auth/popup-closed-by-user') {
+      return 'Sign-in was canceled before completion.';
+    }
+    return defaultMessage;
+  };
+
   const toAppUser = (raw: any, fallback: { uid: string; name: string; email: string; role: UserRole }): User => ({
     id: raw?.id || raw?.uid || fallback.uid,
     name: raw?.name || fallback.name,
@@ -88,15 +128,9 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
         const appUser = await upsertGoogleUser(result.user);
         if (isMounted) onLogin(appUser);
       } catch (err: any) {
-        console.error('Google Redirect Auth Error:', err);
+        logAuthIssue('Google Redirect Auth Error', err);
         if (!isMounted) return;
-        if (err.code === 'auth/unauthorized-domain') {
-          setError('Google Sign-In is blocked because this domain is not yet authorized in Firebase. Add mrgomez.online in Firebase Authentication > Settings > Authorized domains.');
-        } else if (err.code === 'permission-denied' || err.code === 'firestore/permission-denied') {
-          setError('Google sign-in succeeded but your user profile could not be saved. Please try again.');
-        } else {
-          setError('Google Sign-In failed. Please try again.');
-        }
+        setError(mapAuthErrorToMessage(err, 'Google Sign-In failed. Please try again.'));
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -161,20 +195,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
         }
       }
     } catch (err: any) {
-      console.error("Auth Error:", err);
-      let message = "Authentication failed.";
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        message = "Invalid email or password.";
-      } else if (err.code === 'auth/email-already-in-use') {
-        message = "This email is already registered.";
-      } else if (err.code === 'auth/weak-password') {
-        message = "Password should be at least 6 characters.";
-      } else if (err.code === 'auth/invalid-email') {
-        message = "Please enter a valid email address.";
-      } else if (err.code === 'permission-denied' || err.code === 'firestore/permission-denied') {
-        message = "Your account is signed in, but database access was denied. Please refresh and try again.";
-      }
-      setError(message);
+      logAuthIssue('Auth Error', err);
+      setError(mapAuthErrorToMessage(err, 'Authentication failed.'));
     } finally {
       setLoading(false);
     }
@@ -187,14 +209,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin, onCancel }) => {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
     } catch (err: any) {
-      console.error("Google Auth Error:", err);
-      if (err.code === 'auth/unauthorized-domain') {
-        setError("Google Sign-In is blocked because this domain is not yet authorized in Firebase. Add mrgomez.online in Firebase Authentication > Settings > Authorized domains.");
-      } else if (err.code === 'permission-denied' || err.code === 'firestore/permission-denied') {
-        setError("Google sign-in succeeded but your user profile could not be saved. Please try again.");
-      } else {
-        setError("Google Sign-In failed. Please try again.");
-      }
+      logAuthIssue('Google Auth Error', err);
+      setError(mapAuthErrorToMessage(err, 'Google Sign-In failed. Please try again.'));
     } finally {
       // Redirect will leave the page; if it does not, stop spinner.
       setLoading(false);

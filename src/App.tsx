@@ -66,7 +66,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+      if (!firebaseUser) {
+        setUser(null);
+        return;
+      }
+
+      try {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         if (userDoc.exists()) {
           const raw = userDoc.data() as any;
@@ -91,38 +96,54 @@ const App: React.FC = () => {
           }
 
           setUser(userData);
-          // If we are on landing, move to dashboard
-          if (gameState === QuizState.LANDING) {
-             setGameState(userData.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD);
-          }
-        } else {
-          const fallbackRole = firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT';
-          const fallbackUser: User = {
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || 'User',
-            email: firebaseUser.email || '',
-            role: fallbackRole,
-          };
-
-          await setDoc(doc(db, 'users', firebaseUser.uid), {
-            id: fallbackUser.id,
-            uid: fallbackUser.id,
-            name: fallbackUser.name,
-            email: fallbackUser.email,
-            role: fallbackUser.role,
-          }, { merge: true });
-
-          setUser(fallbackUser);
-          if (gameState === QuizState.LANDING) {
-            setGameState(fallbackUser.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD);
-          }
+          setGameState((prev) => prev === QuizState.LANDING
+            ? (userData.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
+            : prev);
+          return;
         }
-      } else {
-        setUser(null);
+
+        const fallbackRole = firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT';
+        const fallbackUser: User = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || 'User',
+          email: firebaseUser.email || '',
+          role: fallbackRole,
+        };
+
+        await setDoc(doc(db, 'users', firebaseUser.uid), {
+          id: fallbackUser.id,
+          uid: fallbackUser.id,
+          name: fallbackUser.name,
+          email: fallbackUser.email,
+          role: fallbackUser.role,
+        }, { merge: true });
+
+        setUser(fallbackUser);
+        setGameState((prev) => prev === QuizState.LANDING
+          ? (fallbackUser.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
+          : prev);
+      } catch (err: any) {
+        if (import.meta.env.DEV) {
+          console.warn('Auth profile sync warning:', err?.code || err?.message || err);
+        }
+
+        const fallbackRole = firebaseUser.email?.toLowerCase() === 'jpgomezmedia@gmail.com' ? 'TEACHER' : 'STUDENT';
+        const fallbackUser: User = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || 'User',
+          email: firebaseUser.email || '',
+          role: fallbackRole,
+        };
+
+        setUser(fallbackUser);
+        setGameState((prev) => prev === QuizState.LANDING
+          ? (fallbackUser.role === 'TEACHER' ? QuizState.TEACHER_DASHBOARD : QuizState.DASHBOARD)
+          : prev);
       }
     });
+
     return () => unsubscribe();
-  }, [gameState]);
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
