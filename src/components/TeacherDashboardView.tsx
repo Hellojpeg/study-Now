@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { GameMode, User } from '../types';
 import { MOCK_CLASSES } from '../constants';
 import { FileText, Plus, List, Trash2, Check, ListChecks, Upload, Search, Settings, Users, BookOpen, BarChart2, ChevronRight, BrainCircuit, LayoutDashboard, ChevronLeft, Menu, LogOut, MoreVertical, GraduationCap, Hash, AlignLeft, CheckSquare, Type, X, Calculator } from 'lucide-react';
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, addDoc, serverTimestamp, setDoc, doc, onSnapshot, where } from 'firebase/firestore';
 import { db } from '../firebase';
 
 interface TeacherDashboardViewProps {
@@ -74,6 +74,42 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user, hidde
   });
     const [recentSubmissions, setRecentSubmissions] = useState<SubmissionRecord[]>([]);
     const [loadingSubmissions, setLoadingSubmissions] = useState(true);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [showAddClassModal, setShowAddClassModal] = useState(false);
+    const [newClassName, setNewClassName] = useState('');
+    const [newClassSection, setNewClassSection] = useState('');
+
+    useEffect(() => {
+        if (!user || user.role === 'STUDENT') return;
+        const qClasses = query(collection(db, 'classes'), where('teacherId', '==', user.id));
+        const unsubClasses = onSnapshot(qClasses, (snap) => {
+            const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setClasses(loaded);
+        });
+
+        return () => unsubClasses();
+    }, [user]);
+
+    const handleCreateClass = async () => {
+        if (!newClassName || !newClassSection) return;
+        try {
+            await addDoc(collection(db, 'classes'), {
+                name: newClassName,
+                section: newClassSection,
+                teacherId: user.id,
+                studentCount: 0,
+                assignments: [],
+                code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+                createdAt: serverTimestamp()
+            });
+            setShowAddClassModal(false);
+            setNewClassName('');
+            setNewClassSection('');
+        } catch (e) {
+            console.error("Error creating class", e);
+            alert("Failed to create class.");
+        }
+    };
 
     useEffect(() => {
         const fetchRecentSubmissions = async () => {
@@ -437,7 +473,8 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user, hidde
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
                             <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><BookOpen className="w-5 h-5 text-indigo-500"/> Active Classes</h2>
                             <div className="space-y-4">
-                                {MOCK_CLASSES.map(cls => (
+                                {classes.length === 0 && <div className="text-sm text-slate-500">No classes yet. Go to Classes to add one.</div>}
+                                {classes.map(cls => (
                                     <div key={cls.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-indigo-200 transition-all group">
                                         <div>
                                             <div className="font-bold text-slate-800">{cls.name}</div>
@@ -469,8 +506,25 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user, hidde
 
             {/* CLASSES VIEW */}
             {activeTab === 'CLASSES' && (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-                    {MOCK_CLASSES.map(cls => (
+                <div>
+                  <div className="flex justify-between items-center mb-6 animate-fadeIn">
+                       <h2 className="text-2xl font-black text-slate-800">Your Classes</h2>
+                       <button 
+                           onClick={() => setShowAddClassModal(true)}
+                           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-bold rounded-xl flex items-center gap-2 transition-transform hover:scale-105 shadow-lg shadow-indigo-200"
+                       >
+                           <Plus className="w-4 h-4" /> Add Class
+                       </button>
+                  </div>
+                  {classes.length === 0 ? (
+                      <div className="text-center py-12 bg-white rounded-3xl border border-slate-200 border-dashed animate-fadeIn text-slate-500">
+                          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                          <h3 className="text-lg font-bold text-slate-800 mb-2">No Classes Found</h3>
+                          <p>Create a class to start organizing your students and assignments.</p>
+                      </div>
+                  ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
+                      {classes.map(cls => (
                         <div key={cls.id} className="bg-white p-6 rounded-3xl border border-slate-200 hover:shadow-xl hover:border-indigo-200 transition-all group cursor-pointer">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-lg text-xs uppercase tracking-wider">{cls.section}</span>
@@ -488,10 +542,8 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user, hidde
                             </div>
                         </div>
                     ))}
-                    <button className="border-2 border-dashed border-slate-300 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all min-h-[200px]">
-                        <Plus className="w-8 h-8 mb-2" />
-                        <span className="font-bold">Add New Class</span>
-                    </button>
+                  </div>
+                  )}
                 </div>
             )}
 
@@ -792,6 +844,55 @@ const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({ user, hidde
 
           </div>
       </main>
+
+      {/* ADD CLASS MODAL */}
+      {showAddClassModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative animate-fadeIn">
+                <button onClick={() => setShowAddClassModal(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors">
+                    <X className="w-5 h-5" />
+                </button>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-indigo-100 p-3 rounded-2xl">
+                        <BookOpen className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800">Create New Class</h2>
+                        <p className="text-sm text-slate-500">Add a new class to manage students</p>
+                    </div>
+                </div>
+                <div className="space-y-4 mb-6">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Class Name</label>
+                        <input 
+                            type="text" 
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                            placeholder="e.g. World History"
+                            value={newClassName}
+                            onChange={(e) => setNewClassName(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Section / Period</label>
+                        <input 
+                            type="text" 
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                            placeholder="e.g. Period 2"
+                            value={newClassSection}
+                            onChange={(e) => setNewClassSection(e.target.value)}
+                        />
+                    </div>
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={() => setShowAddClassModal(false)} className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
+                    <button onClick={handleCreateClass} className="flex-1 py-3 px-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-indigo-200 flex items-center justify-center gap-2">
+                        <Check className="w-5 h-5" /> Create
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
     </div>
   );
 };

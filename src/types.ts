@@ -147,6 +147,7 @@ export interface Classroom {
   code: string;
   studentCount: number;
   assignments: string[]; // IDs of assigned quizzes
+  teacherId?: string;
 }
 
 // --- Dashboard Types ---

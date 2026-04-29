@@ -134,5 +134,12 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin() && docId == 'gameVisibility';
     }
+
+    match /classes/{classId} {
+      allow read: if isAuthenticated();
+      allow create: if isTeacherOrAdmin() && request.resource.data.teacherId == request.auth.uid;
+      allow update: if isTeacherOrAdmin() && resource.data.teacherId == request.auth.uid;
+      allow delete: if isTeacherOrAdmin() && resource.data.teacherId == request.auth.uid;
+    }
   }
 }
