@@ -35,10 +35,16 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isTeacherEmail() {
+      return isAuthenticated() &&
+        request.auth.token.email is string &&
+        request.auth.token.email.matches("(?i)^jpgomezmedia@gmail\\.com$");
+    }
+
     function isAdmin() {
       return isAuthenticated() && 
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'TEACHER' ||
-         (request.auth.token.email.matches("(?i)jpgomezmedia@gmail\\.com") && request.auth.token.email_verified == true));
+         isTeacherEmail());
     }
 
     function isValidUser(data) {
