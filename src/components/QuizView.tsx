@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Question, GameMode } from '../types';
-import { ArrowRight, CheckCircle, XCircle, AlertCircle, Lightbulb, Zap, Clock, Flame, Square, Triangle, Circle, Target } from 'lucide-react';
+import { ArrowRight, CheckCircle, XCircle, AlertCircle, Lightbulb, Zap, Clock, Flame, Square, Triangle, Circle, Target, Book, MessageSquare, Send, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { playSuccessSound, playFailureSound } from '../utils/audio';
-import { WORLD_HISTORY_COURSE_CONTENT } from '../constants';
+import { WORLD_HISTORY_COURSE_CONTENT, CIVICS_COURSE_CONTENT, US_HISTORY_COURSE_CONTENT } from '../constants';
+import * as webllm from '@mlc-ai/web-llm';
 
 interface QuizViewProps {
   question: Question;
@@ -35,13 +36,146 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [triggerRedFlash, setTriggerRedFlash] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10); // Speed mode timer
 
-  // Dictionary Feature State
+  // Dictionary & Tools Feature State
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
-  const [wordDefinition, setWordDefinition] = useState<string | null>(null);
+  const [isToolPaneOpen, setIsToolPaneOpen] = useState(false);
+  const [activeToolTab, setActiveToolTab] = useState<'dictionary' | 'lumi'>('dictionary');
+  
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [wordDefinition, setWordDefinition] = useState<any | null>(null);
   const [isLoadingDef, setIsLoadingDef] = useState(false);
 
+  // Lumi AI Status
+  const [lumiEngine, setLumiEngine] = useState<webllm.MLCEngineInterface | null>(null);
+  const [isLumiLoading, setIsLumiLoading] = useState(false);
+  const [isLumiGenerating, setIsLumiGenerating] = useState(false);
+  const [lumiProgress, setLumiProgress] = useState<string>('Not initialized.');
+  const [lumiChatInput, setLumiChatInput] = useState('');
+  const [lumiMessages, setLumiMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
+  const [selectedModel, setSelectedModel] = useState<'spark' | 'aria'>('spark');
+  const [loadingFact, setLoadingFact] = useState('');
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isLumiLoading) return;
+    const facts = [
+      "Did you know? Octopuses have 3 hearts! 🐙",
+      "Brushing up on history... no time travel required! ⏳",
+      "Fun fact: Honey never spoils! 🍯",
+      "Brewing some digital coffee... ☕",
+      "Did you know? Bananas are berries, but strawberries are not! 🍌",
+      "Fun fact: The shortest war in history lasted just 38 minutes! 🕰️",
+      "Waking up the AI... don't worry, it's a morning person! 🌅",
+      "Did you know? Wombats have cube-shaped poop! 🧊",
+      "Gathering vast amounts of knowledge from the digital ether... 🧠",
+      "Pro tip: Read all the answer choices before deciding! 📝",
+      "Reticulating splines... just kidding! 🤖"
+    ];
+    let idx = Math.floor(Math.random() * facts.length);
+    setLoadingFact(facts[idx]);
+    
+    const interval = setInterval(() => {
+      idx = (idx + 1) % facts.length;
+      setLoadingFact(facts[idx]);
+    }, 3500);
+    
+    return () => clearInterval(interval);
+  }, [isLumiLoading]);
+
+  const handleModelSwitch = (model: 'spark' | 'aria') => {
+    if (model === selectedModel) return;
+    setSelectedModel(model);
+    setLumiEngine(null);
+    setLumiMessages([]);
+    setLumiProgress('Not initialized.');
+  };
+
+  // Initialize Lumi AI
+  const initLumi = async () => {
+    if (lumiEngine) return;
+    setIsLumiLoading(true);
+    setLumiMessages([]);
+    try {
+      setLumiProgress(`0%`);
+      const initProgressCallback = (report: webllm.InitProgressReport) => {
+        setLumiProgress(`${Math.round(report.progress * 100)}%`);
+      };
+      
+      const modelId = selectedModel === 'spark' 
+        ? "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC" 
+        : "gemma-2b-it-q4f32_1-MLC";
+
+      const engine = await webllm.CreateMLCEngine(
+        modelId, 
+        { initProgressCallback }
+      );
+      setLumiEngine(engine);
+      setLumiProgress('Ready to help!');
+      setLumiMessages([{ role: 'assistant', content: `Hi! I am ${selectedModel === 'spark' ? 'Lumi' : 'Luma'}, powered by the ${selectedModel === 'spark' ? 'Spark' : 'Aria'} model. How can I help you understand this quiz better?` }]);
+    } catch (error: any) {
+      if (error.name === 'QuotaExceededError' || error.message?.includes('Quota exceeded')) {
+        setLumiProgress('Storage quota exceeded.');
+        setLumiMessages([{ 
+          role: 'assistant', 
+          content: 'Storage Quota Exceeded! 🛑\n\nYour browser blocked the model from loading because there isn\'t enough permitted storage space.\n\n**VS Code\'s embedded simple browser strictly limits storage quotas.** To fix this, please open the preview URL (`http://localhost:3000` or `http://localhost:3001`) directly in a **NEW dedicated browser tab** rather than inside the editor!' 
+        }]);
+      } else {
+        setLumiProgress('Error loading model: ' + error.message);
+        setLumiMessages([{ role: 'assistant', content: `Sorry, my engine failed to load. Your browser might not support WebGPU, or there was a loading error.\n\nDetails: ${error.message}` }]);
+      }
+      console.error(error);
+    } finally {
+      setIsLumiLoading(false);
+    }
+  };
+
+  const handleLumiSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lumiChatInput.trim() || !lumiEngine || isLumiGenerating) return;
+
+    const userMessage = lumiChatInput.trim();
+    setLumiChatInput('');
+    setIsLumiGenerating(true);
+    const newMessages: {role: 'user' | 'assistant', content: string}[] = [...lumiMessages, { role: 'user', content: userMessage }];
+    setLumiMessages(newMessages);
+
+    try {
+      const messagesForEngine: webllm.ChatCompletionMessageParam[] = newMessages.map(m => ({ 
+        role: m.role, 
+        content: m.content 
+      }));
+      
+      const chunks = await lumiEngine.chat.completions.create({
+        messages: messagesForEngine,
+        stream: true,
+      });
+
+      let assistantMessageChunks = '';
+      setLumiMessages([...newMessages, { role: 'assistant', content: '' }]);
+
+      for await (const chunk of chunks) {
+        if (chunk.choices[0]?.delta?.content) {
+          assistantMessageChunks += chunk.choices[0].delta.content;
+          setLumiMessages([...newMessages, { role: 'assistant', content: assistantMessageChunks }]);
+        }
+      }
+    } catch (e: any) {
+       console.error(e);
+       setLumiMessages([...newMessages, { role: 'assistant', content: `Error: ${e.message}` }]);
+    } finally {
+       setIsLumiGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [lumiMessages]);
+
   // Find Benchmark Description
-  const benchmarkInfo = WORLD_HISTORY_COURSE_CONTENT.benchmarks.find(b => b.code === question.benchmark);
+  const benchmarkInfo = 
+    WORLD_HISTORY_COURSE_CONTENT.benchmarks.find(b => b.code === question.benchmark) ||
+    CIVICS_COURSE_CONTENT.benchmarks.find(b => b.code === question.benchmark) ||
+    US_HISTORY_COURSE_CONTENT.benchmarks.find(b => b.code === question.benchmark);
 
   // Reset timer on new question
   useEffect(() => {
@@ -169,22 +303,36 @@ const QuizView: React.FC<QuizViewProps> = ({
     return `${baseStyle} border-slate-100 bg-slate-50 text-slate-400`;
   };
 
-  const handleWordClick = async (word: string) => {
-    const cleanWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
+  const handleWordSearch = async (word: string) => {
+    const cleanWord = word.replace(/[^a-zA-Z\s\-]/g, '').trim().toLowerCase();
     if (!cleanWord) return;
     
     setSelectedWord(cleanWord);
     setIsLoadingDef(true);
     setWordDefinition(null);
 
-    const extractDictionaryApiDefinition = (data: any): string | null => {
+    const extractDictionaryApiDefinition = (data: any): any => {
       if (!Array.isArray(data) || data.length === 0) return null;
+      
+      const entry = data[0];
+      const result = {
+        word: entry.word,
+        phonetic: entry.phonetic || entry.phonetics?.find((p: any) => p.text)?.text || '',
+        meanings: [] as any[]
+      };
 
-      const meanings = data[0]?.meanings;
-      const definition = meanings?.[0]?.definitions?.[0]?.definition;
-      return typeof definition === 'string' && definition.trim().length > 0
-        ? definition
-        : null;
+      if (entry.meanings && Array.isArray(entry.meanings)) {
+        entry.meanings.forEach((m: any) => {
+          const meaning = {
+            partOfSpeech: m.partOfSpeech,
+            definitions: m.definitions.map((d: any) => d.definition),
+            example: m.definitions.find((d: any) => d.example)?.example || ''
+          };
+          result.meanings.push(meaning);
+        });
+      }
+
+      return result.meanings.length > 0 ? result : null;
     };
 
     const extractDatamuseDefinition = (data: any): string | null => {
@@ -219,7 +367,7 @@ const QuizView: React.FC<QuizViewProps> = ({
     try {
       const encodedWord = encodeURIComponent(cleanWord);
 
-      const sources: Array<() => Promise<string | null>> = [
+      const sources: Array<() => Promise<any>> = [
         async () => {
           const proxiedUrl = encodeURIComponent(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodedWord}`);
           const data = await fetchWithTimeout(`https://api.allorigins.win/raw?url=${proxiedUrl}`);
@@ -231,7 +379,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         }
       ];
 
-      let resolvedDefinition: string | null = null;
+      let resolvedDefinition: any = null;
       for (const source of sources) {
         try {
           const next = await source();
@@ -249,6 +397,45 @@ const QuizView: React.FC<QuizViewProps> = ({
       setWordDefinition("Failed to fetch definition.");
     }
     setIsLoadingDef(false);
+  };
+
+  const handleMouseUpText = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    const text = selection.toString().trim();
+    if (text) {
+      setSearchQuery(text);
+      handleWordSearch(text);
+      setIsToolPaneOpen(true);
+      setActiveToolTab('dictionary');
+    }
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      handleWordSearch(searchQuery);
+    }
+  };
+
+  const getDynamicHint = () => {
+    if (question.hint) return question.hint;
+    const correctAns = question.options[question.correctAnswerIndex];
+    if (!correctAns) return "Review the options carefully and eliminate the ones that contradict the question.";
+
+    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'with', 'to', 'of', 'for', 'by', 'as', 'is', 'are', 'was', 'were', 'it', 'that', 'this', 'from', 'at', 'about', 'be', 'will', 'would', 'can', 'could', 'should', 'have', 'has', 'had', 'not', 'no', 'they', 'their', 'them', 'each', 'many', 'all', 'some', 'any', 'which', 'what', 'who']);
+    
+    const words = correctAns.replace(/[^\w\s-]/g, '').split(/\s+/);
+    const keywords = words.filter((w: string) => !stopWords.has(w.toLowerCase()) && w.length > 2);
+    
+    if (keywords.length > 0) {
+      const selectedKeywords = keywords.slice(0, 2).map((w: string) => w.toUpperCase());
+      return selectedKeywords.length > 1 
+        ? `Think about how the concepts of ${selectedKeywords[0]} and ${selectedKeywords[1]} relate to the question.`
+        : `Consider how the concept of ${selectedKeywords[0]} plays a role here.`;
+    }
+    
+    return "Think carefully about the keywords in the question.";
   };
 
   const progressPercentage = ((currentNumber - 1) / totalQuestions) * 100;
@@ -383,51 +570,33 @@ const QuizView: React.FC<QuizViewProps> = ({
           ${combo >= 7 && gameMode === 'speed' ? 'shadow-blue-500/50 border-blue-400' : ''}
         `}>
           <div className="p-8">
-            <div className="flex justify-between items-start mb-6">
-               <h2 className="text-2xl font-bold text-slate-800 leading-snug flex-1 mr-4 relative">
-                  {question.question.split(' ').map((word, i) => {
-                    const id = `${i}-${word}`;
-                    return (
-                      <React.Fragment key={id}>
-                        <span 
-                          onClick={() => handleWordClick(word)}
-                          className="cursor-pointer hover:bg-yellow-200 hover:text-yellow-900 transition-colors rounded decoration-dashed underline-offset-4 decoration-slate-300 hover:underline"
-                        >
-                          {word}
-                        </span>
-                        {' '}
-                      </React.Fragment>
-                    );
-                  })}
-
-                  {/* Definition Tooltip */}
-                  {selectedWord && (
-                    <div className="absolute z-50 bg-slate-900 text-white p-5 rounded-2xl shadow-2xl mt-4 w-72 text-sm -left-4 font-normal border border-slate-700">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="font-bold text-lg text-yellow-400 capitalize">{selectedWord}</span>
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedWord(null); }} className="text-slate-400 hover:text-white bg-slate-800 p-1 rounded-full">
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                      {isLoadingDef ? (
-                        <div className="flex items-center gap-2 text-slate-400 py-2">
-                          <Zap className="w-4 h-4 animate-pulse text-yellow-500 fill-yellow-500" /> Looking up...
-                        </div>
-                      ) : (
-                        <p className="leading-relaxed text-slate-300">{wordDefinition}</p>
-                      )}
-                    </div>
-                  )}
-              </h2>
-               {!isAnswered && gameMode !== 'speed' && (
-                  <button 
-                    onClick={() => setShowHint(!showHint)}
-                    className="p-2 rounded-full hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 transition-colors"
-                    title="Show Hint"
+            <div className="flex justify-between items-start mb-6 relative">
+               <div className="flex-1 mr-4">
+                  <h2 
+                    onMouseUp={handleMouseUpText}
+                    className="text-2xl font-bold text-slate-800 leading-snug cursor-text"
                   >
-                      <Lightbulb className={`w-6 h-6 ${showHint ? 'text-yellow-500 fill-yellow-500' : ''}`} />
+                    {question.question}
+                  </h2>
+              </div>
+              <div className="flex gap-2">
+                 {!isAnswered && gameMode !== 'speed' && (
+                    <button 
+                      onClick={() => setShowHint(!showHint)}
+                      className="p-2 rounded-full hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 transition-colors"
+                      title="Show Hint"
+                    >
+                        <Lightbulb className={`w-6 h-6 ${showHint ? 'text-yellow-500 fill-yellow-500' : ''}`} />
+                    </button>
+                 )}
+                 <button 
+                    onClick={() => { setIsToolPaneOpen(!isToolPaneOpen); }}
+                    className="p-2 rounded-full hover:bg-blue-50 text-slate-400 hover:text-blue-500 transition-colors"
+                    title="Open Tools"
+                  >
+                      <Sparkles className="w-6 h-6" />
                   </button>
-               )}
+              </div>
             </div>
 
             {/* Hint Box */}
@@ -437,7 +606,7 @@ const QuizView: React.FC<QuizViewProps> = ({
             `}>
                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 flex gap-3">
                   <Lightbulb className="w-5 h-5 flex-shrink-0" />
-                  <p><strong>Hint:</strong> {question.hint || "Think carefully about the keywords in the question."}</p>
+                  <p><strong>Hint:</strong> {getDynamicHint()}</p>
                </div>
             </div>
 
@@ -531,6 +700,168 @@ const QuizView: React.FC<QuizViewProps> = ({
         )}
 
       </div>
+
+      {/* --- TOOLS SIDE PANEL --- */}
+      <div className={`fixed right-0 top-0 h-full w-96 bg-slate-50 shadow-2xl border-l border-slate-200 transform transition-transform duration-300 z-[100] flex flex-col ${isToolPaneOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex justify-between items-center p-4 bg-white border-b border-slate-200">
+           <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+             <button 
+                onClick={() => setActiveToolTab('dictionary')}
+                className={`px-4 py-1.5 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeToolTab === 'dictionary' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+             >
+                <Book className="w-4 h-4" /> Dictionary
+             </button>
+             <button 
+                onClick={() => { setActiveToolTab('lumi'); }}
+                className={`px-4 py-1.5 rounded-md text-sm font-bold flex items-center gap-2 transition-colors ${activeToolTab === 'lumi' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+             >
+                <Sparkles className="w-4 h-4" /> AI Helper
+             </button>
+           </div>
+           <button onClick={() => setIsToolPaneOpen(false)} className="text-slate-400 hover:text-slate-800 p-1 rounded-full">
+             <XCircle className="w-6 h-6" />
+           </button>
+        </div>
+
+        {/* Dictionary Tab Panel */}
+        <div className={`p-6 flex-1 overflow-y-auto bg-[#fdfbf7] ${activeToolTab === 'dictionary' ? 'block' : 'hidden'}`}>
+           <form onSubmit={handleSearchSubmit} className="flex mb-6 opacity-100 transition-opacity">
+              <input 
+                 type="text" 
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 placeholder="Search dictionary..."
+                 className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-serif"
+              />
+           </form>
+           
+           {isLoadingDef ? (
+              <div className="flex items-center gap-2 text-slate-500 py-8 justify-center flex-col">
+                 <Zap className="w-8 h-8 animate-pulse text-yellow-500 fill-yellow-500 mb-2" />
+                 <span className="font-serif">Looking up...</span>
+              </div>
+           ) : (
+              <div className="pr-2 custom-scrollbar">
+                 {typeof wordDefinition === 'object' && wordDefinition !== null ? (
+                    <div>
+                       <div className="mb-4 border-b border-slate-200 pb-3">
+                          <h3 className="font-bold text-3xl font-serif capitalize text-slate-800">{wordDefinition.word}</h3>
+                          {wordDefinition.phonetic && (
+                             <span className="text-slate-500 italic text-base block mt-1">{wordDefinition.phonetic}</span>
+                          )}
+                       </div>
+                       {wordDefinition.meanings.map((meaning: any, index: number) => (
+                          <div key={index} className="mb-5">
+                             <p className="italic font-serif text-blue-800 font-bold mb-2 text-lg">{meaning.partOfSpeech}</p>
+                             <ol className="list-decimal pl-5 space-y-2">
+                             {meaning.definitions.map((def: string, i: number) => (
+                                <li key={i} className="text-slate-700 leading-relaxed font-serif">{def}</li>
+                             ))}
+                             </ol>
+                             {meaning.example && (
+                                <p className="text-slate-500 italic mt-2 pl-4 border-l-2 border-blue-300 ml-1 block">"{meaning.example}"</p>
+                             )}
+                          </div>
+                       ))}
+                    </div>
+                 ) : (
+                    <p className="leading-relaxed text-slate-600 font-serif text-center mt-10">
+                       {wordDefinition || "Highlight a word in the quiz or type a word above to see its definition."}
+                    </p>
+                 )}
+              </div>
+           )}
+        </div>
+
+        {/* Lumi Tab Panel */}
+        <div className={`flex-1 flex flex-col bg-white overflow-hidden ${activeToolTab === 'lumi' ? 'flex' : 'hidden'}`}>
+           
+           <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-center gap-2">
+             <button 
+               onClick={() => handleModelSwitch('spark')}
+               className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${selectedModel === 'spark' ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+             >
+               Lumi Spark (Fast)
+             </button>
+             <button 
+               onClick={() => handleModelSwitch('aria')}
+               className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${selectedModel === 'aria' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+             >
+               Luma Aria (Smart)
+             </button>
+           </div>
+
+           {!lumiEngine && !isLumiLoading && lumiMessages.length === 0 ? (
+             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50">
+                <Sparkles className={`w-12 h-12 mb-4 ${selectedModel === 'spark' ? 'text-purple-500' : 'text-blue-500'}`} />
+                <h3 className="font-bold text-slate-700 text-lg mb-2">Ready to Load {selectedModel === 'spark' ? 'Lumi Spark' : 'Luma Aria'}</h3>
+                <p className="text-sm text-slate-500 mb-6 max-w-[250px]">
+                  Load the model directly into your browser's local cache. 
+                </p>
+                <button 
+                  onClick={initLumi}
+                  className={`px-6 py-2 rounded-lg text-white font-bold transition-all shadow-md ${selectedModel === 'spark' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                  Load Model
+                </button>
+             </div>
+           ) : isLumiLoading && lumiMessages.length === 0 ? (
+             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50">
+                <Sparkles className={`w-12 h-12 animate-pulse mb-4 ${selectedModel === 'spark' ? 'text-purple-500' : 'text-blue-500'}`} />
+                <h3 className="font-bold text-slate-700 text-lg mb-2">Waking up {selectedModel === 'spark' ? 'Lumi Spark' : 'Luma Aria'}...</h3>
+                <div className="w-full bg-slate-200 rounded-full h-2 mb-2 mt-4 overflow-hidden">
+                   <div className={`h-2 rounded-full transition-all duration-300 ${selectedModel === 'spark' ? 'bg-purple-500' : 'bg-blue-500'}`} style={{width: lumiProgress.includes('%') ? lumiProgress : '100%'}}></div>
+                </div>
+                <p className="text-xs text-slate-400 font-mono font-bold mb-6">{lumiProgress}</p>
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 max-w-[250px] min-h-[80px] flex items-center justify-center">
+                   <p className="text-sm text-slate-600 font-medium italic transition-opacity min-h-[40px]">
+                      "{loadingFact}"
+                   </p>
+                </div>
+             </div>
+           ) : (
+             <>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                   {lumiMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                         <div className={`max-w-[85%] p-3 rounded-2xl ${msg.role === 'user' ? 'bg-purple-600 text-white rounded-br-sm' : 'bg-slate-100 text-slate-700 rounded-bl-sm'}`}>
+                            {msg.role === 'assistant' && i === lumiMessages.length - 1 && msg.content === '' ? (
+                               <span className="flex gap-1 items-center h-4 py-2">
+                                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}}></span>
+                                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}}></span>
+                                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}}></span>
+                               </span>
+                            ) : (
+                               <p className="text-sm leading-relaxed">{msg.content}</p>
+                            )}
+                         </div>
+                      </div>
+                   ))}
+                   <div ref={chatBottomRef} />
+                </div>
+                <div className="p-4 border-t border-slate-200 bg-slate-50">
+                   <form onSubmit={handleLumiSubmit} className="flex gap-2">
+                      <input 
+                         type="text" 
+                         value={lumiChatInput}
+                         onChange={(e) => setLumiChatInput(e.target.value)}
+                         placeholder="Ask Lumi..."
+                         className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                      />
+                      <button 
+                         type="submit" 
+                         disabled={!lumiChatInput.trim() || isLumiGenerating || !lumiEngine}
+                         className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                         <Send className="w-5 h-5" />
+                      </button>
+                   </form>
+                </div>
+             </>
+           )}
+        </div>
+      </div>
+
     </>
   );
 };

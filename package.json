@@ -5,6 +5,7 @@
   "main": "index.tsx",
   "dependencies": {
     "@google/genai": "^1.50.1",
+    "@mlc-ai/web-llm": "^0.2.83",
     "@types/canvas-confetti": "^1.9.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
