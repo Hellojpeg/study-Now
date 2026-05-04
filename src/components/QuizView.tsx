@@ -82,8 +82,19 @@ const QuizView: React.FC<QuizViewProps> = ({
     return () => clearInterval(interval);
   }, [isLumiLoading]);
 
-  const handleModelSwitch = (model: 'spark' | 'aria') => {
+  const handleModelSwitch = async (model: 'spark' | 'aria') => {
     if (model === selectedModel) return;
+    
+    // Properly unload engine from GPU memory before switching
+    if (lumiEngine) {
+      setLumiProgress('Optimizing memory: unloading previous model...');
+      try {
+        await lumiEngine.unload();
+      } catch (e) {
+        console.error('Failed to unload WebLLM engine', e);
+      }
+    }
+    
     setSelectedModel(model);
     setLumiEngine(null);
     setLumiMessages([]);
@@ -170,6 +181,8 @@ const QuizView: React.FC<QuizViewProps> = ({
       const chunks = await lumiEngine.chat.completions.create({
         messages: messagesForEngine,
         stream: true,
+        temperature: 0.7,
+        max_tokens: 300,
       });
 
       let assistantMessageChunks = '';
