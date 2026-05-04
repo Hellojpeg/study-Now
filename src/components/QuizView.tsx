@@ -90,12 +90,34 @@ const QuizView: React.FC<QuizViewProps> = ({
     setLumiProgress('Not initialized.');
   };
 
+  // Clear Cache function for WebLLM
+  const clearWebLLMCache = async () => {
+    try {
+      setLumiProgress('Clearing cache...');
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        for (const name of cacheNames) {
+          if (name.includes('webllm')) {
+            await caches.delete(name);
+          }
+        }
+      }
+      setLumiProgress('Cache cleared! Try loading again.');
+    } catch (e) {
+      console.error('Failed to clear cache', e);
+      setLumiProgress('Failed to clear cache.');
+    }
+  };
+
   // Initialize Lumi AI
   const initLumi = async () => {
     if (lumiEngine) return;
     setIsLumiLoading(true);
     setLumiMessages([]);
     try {
+      if (navigator.storage && navigator.storage.persist) {
+        await navigator.storage.persist();
+      }
       setLumiProgress(`0%`);
       const initProgressCallback = (report: webllm.InitProgressReport) => {
         setLumiProgress(`${Math.round(report.progress * 100)}%`);
@@ -117,7 +139,7 @@ const QuizView: React.FC<QuizViewProps> = ({
         setLumiProgress('Storage quota exceeded.');
         setLumiMessages([{ 
           role: 'assistant', 
-          content: 'Storage Quota Exceeded! 🛑\n\nYour browser blocked the model from loading because there isn\'t enough permitted storage space.\n\n**VS Code\'s embedded simple browser strictly limits storage quotas.** To fix this, please open the preview URL (`http://localhost:3000` or `http://localhost:3001`) directly in a **NEW dedicated browser tab** rather than inside the editor!' 
+          content: 'Storage Quota Exceeded! 🛑\n\nYour browser blocked the model from loading because there isn\'t enough permitted storage space. Please click **Clear Cache** below to free up space, and ensure you open this URL (`http://localhost:3000`) directly in a **NEW browser tab** instead of inside the VS Code editor!' 
         }]);
       } else {
         setLumiProgress('Error loading model: ' + error.message);
@@ -798,12 +820,20 @@ const QuizView: React.FC<QuizViewProps> = ({
                 <p className="text-sm text-slate-500 mb-6 max-w-[250px]">
                   Load the model directly into your browser's local cache. 
                 </p>
-                <button 
-                  onClick={initLumi}
-                  className={`px-6 py-2 rounded-lg text-white font-bold transition-all shadow-md ${selectedModel === 'spark' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                >
-                  Load Model
-                </button>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={initLumi}
+                    className={`px-6 py-2 rounded-lg text-white font-bold transition-all shadow-md ${selectedModel === 'spark' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  >
+                    Load Model
+                  </button>
+                  <button 
+                    onClick={clearWebLLMCache}
+                    className="px-6 py-2 rounded-lg text-slate-600 bg-slate-200 font-bold transition-all shadow-md hover:bg-slate-300"
+                  >
+                    Clear Cache
+                  </button>
+                </div>
              </div>
            ) : isLumiLoading && lumiMessages.length === 0 ? (
              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50">
