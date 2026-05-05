@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { playSuccessSound, playFailureSound } from '../utils/audio';
 import { WORLD_HISTORY_COURSE_CONTENT, CIVICS_COURSE_CONTENT, US_HISTORY_COURSE_CONTENT } from '../constants';
 import * as webllm from '@mlc-ai/web-llm';
+import { GoogleGenAI } from '@google/genai';
 
 interface QuizViewProps {
   question: Question;
@@ -52,7 +53,7 @@ const QuizView: React.FC<QuizViewProps> = ({
   const [lumiProgress, setLumiProgress] = useState<string>('Not initialized.');
   const [lumiChatInput, setLumiChatInput] = useState('');
   const [lumiMessages, setLumiMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
-  const [selectedModel, setSelectedModel] = useState<'spark' | 'aria'>('spark');
+  const [selectedModel, setSelectedModel] = useState<'spark' | 'aria' | 'flash'>('spark');
   const [loadingFact, setLoadingFact] = useState('');
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
@@ -82,7 +83,20 @@ const QuizView: React.FC<QuizViewProps> = ({
     return () => clearInterval(interval);
   }, [isLumiLoading]);
 
-  const handleModelSwitch = async (model: 'spark' | 'aria') => {
+  // Timed Memory Unloading when tools pane is closed
+  useEffect(() => {
+    if (!isToolPaneOpen && lumiEngine) {
+      const timer = setTimeout(() => {
+        console.log('Unloading WebLLM engine due to inactivity');
+        lumiEngine.unload().catch(console.error);
+        setLumiEngine(null);
+        setLumiProgress("Unloaded to save memory. Click Load Model to wake me up.");
+      }, 120000); // 2 minutes
+      return () => clearTimeout(timer);
+    }
+  }, [isToolPaneOpen, lumiEngine]);
+
+  const handleModelSwitch = async (model: 'spark' | 'aria' | 'flash') => {
     if (model === selectedModel) return;
     
     // Properly unload engine from GPU memory before switching
@@ -97,8 +111,13 @@ const QuizView: React.FC<QuizViewProps> = ({
     
     setSelectedModel(model);
     setLumiEngine(null);
-    setLumiMessages([]);
-    setLumiProgress('Not initialized.');
+    setLumiProgress(model === 'flash' ? 'Ready to help via Cloud!' : 'Not initialized.');
+    
+    if (model === 'flash') {
+      setLumiMessages([{ role: 'assistant', content: 'Hi! I am Lumi Flash. I run in the cloud, so I use zero battery. How can I help you today?' }]);
+    } else {
+      setLumiMessages([]);
+    }
   };
 
   // Clear Cache function for WebLLM
@@ -122,7 +141,15 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   // Initialize Lumi AI
   const initLumi = async () => {
+    if (selectedModel === 'flash') return; // Flash uses cloud API
     if (lumiEngine) return;
+
+    if (!navigator.gpu) {
+      setLumiProgress("WebGPU not supported on this browser.");
+      setLumiMessages([{ role: 'assistant', content: 'Your browser or device does not support WebGPU, which is required for local models. Please switch to Gemini Flash.' }]);
+      return;
+    }
+
     setIsLumiLoading(true);
     setLumiMessages([]);
     try {
@@ -138,9 +165,13 @@ const QuizView: React.FC<QuizViewProps> = ({
         ? "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC" 
         : "gemma-2b-it-q4f32_1-MLC";
 
+      // Cap the token context out of the box so weak devices don't crash
       const engine = await webllm.CreateMLCEngine(
         modelId, 
-        { initProgressCallback }
+        {
+          initProgressCallback,
+          context_window_size: 1536
+        }
       );
       setLumiEngine(engine);
       setLumiProgress('Ready to help!');
@@ -164,21 +195,57 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   const handleLumiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lumiChatInput.trim() || !lumiEngine || isLumiGenerating) return;
+    if (!lumiChatInput.trim() || isLumiGenerating) return;
+
+    if (selectedModel !== 'flash' && !lumiEngine) return;
 
     const userMessage = lumiChatInput.trim();
     setLumiChatInput('');
     setIsLumiGenerating(true);
+    setIsLumiLoading(true);
     const newMessages: {role: 'user' | 'assistant', content: string}[] = [...lumiMessages, { role: 'user', content: userMessage }];
     setLumiMessages(newMessages);
 
     try {
-      const messagesForEngine: webllm.ChatCompletionMessageParam[] = newMessages.map(m => ({ 
+      // Limit context window to last 5 messages to avoid blowing up memory limits
+      const recentMessages = newMessages.length > 5 ? newMessages.slice(newMessages.length - 5) : newMessages;
+
+      if (selectedModel === 'flash') {
+          const apiKey = import.meta.env.VITE_API_KEY;
+          if (!apiKey) {
+            setLumiMessages([
+              ...newMessages,
+              { role: 'assistant', content: 'Lumi Spark is not configured yet. Please set VITE_API_KEY in your environment to enable Gemini Flash.' }
+            ]);
+            setIsLumiGenerating(false);
+            setIsLumiLoading(false);
+            return;
+          }
+
+          const ai = new GoogleGenAI({ apiKey });
+          const transcript = recentMessages
+            .map((m) => `${m.role === 'user' ? 'Student' : 'Lumi'}: ${m.content}`)
+            .join('\n');
+
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Conversation so far:\n${transcript}\n\nRespond to the latest Student message as Lumi. Keep it supportive, brief, and educational.`,
+            config: { temperature: 0.4, maxOutputTokens: 320 }
+          });
+
+          const modelText = (response.text || '').trim();
+          setLumiMessages([...newMessages, { role: 'assistant', content: modelText }]);
+          setIsLumiGenerating(false);
+          setIsLumiLoading(false);
+          return;
+      }
+
+      const messagesForEngine: webllm.ChatCompletionMessageParam[] = recentMessages.map(m => ({ 
         role: m.role, 
         content: m.content 
       }));
       
-      const chunks = await lumiEngine.chat.completions.create({
+      const chunks = await lumiEngine!.chat.completions.create({
         messages: messagesForEngine,
         stream: true,
         temperature: 0.7,
@@ -187,6 +254,8 @@ const QuizView: React.FC<QuizViewProps> = ({
 
       let assistantMessageChunks = '';
       setLumiMessages([...newMessages, { role: 'assistant', content: '' }]);
+
+      setIsLumiLoading(false);
 
       for await (const chunk of chunks) {
         if (chunk.choices[0]?.delta?.content) {
@@ -199,6 +268,7 @@ const QuizView: React.FC<QuizViewProps> = ({
        setLumiMessages([...newMessages, { role: 'assistant', content: `Error: ${e.message}` }]);
     } finally {
        setIsLumiGenerating(false);
+       setIsLumiLoading(false);
     }
   };
 
@@ -811,22 +881,28 @@ const QuizView: React.FC<QuizViewProps> = ({
         {/* Lumi Tab Panel */}
         <div className={`flex-1 flex flex-col bg-white overflow-hidden ${activeToolTab === 'lumi' ? 'flex' : 'hidden'}`}>
            
-           <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-center gap-2">
+           <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-center gap-2 flex-wrap">
              <button 
                onClick={() => handleModelSwitch('spark')}
                className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${selectedModel === 'spark' ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
              >
-               Lumi Spark (Fast)
+               Spark (Local)
              </button>
              <button 
                onClick={() => handleModelSwitch('aria')}
                className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${selectedModel === 'aria' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
              >
-               Luma Aria (Smart)
+               Aria (Local)
+             </button>
+             <button 
+               onClick={() => handleModelSwitch('flash')}
+               className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${selectedModel === 'flash' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+             >
+               Flash (Cloud)
              </button>
            </div>
 
-           {!lumiEngine && !isLumiLoading && lumiMessages.length === 0 ? (
+           {selectedModel !== 'flash' && !lumiEngine && !isLumiLoading && lumiMessages.length === 0 ? (
              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50">
                 <Sparkles className={`w-12 h-12 mb-4 ${selectedModel === 'spark' ? 'text-purple-500' : 'text-blue-500'}`} />
                 <h3 className="font-bold text-slate-700 text-lg mb-2">Ready to Load {selectedModel === 'spark' ? 'Lumi Spark' : 'Luma Aria'}</h3>
